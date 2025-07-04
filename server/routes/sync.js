@@ -2,12 +2,11 @@ import express from 'express';
 import Song from '../models/Song.js';
 import Album from '../models/Album.js';
 import SpotifyService from '../services/spotifyService.js';
-import YouTubeService from '../services/youtubeService.js';
 import fetchRealBTSData from '../data/fetchRealData.js';
 
 const router = express.Router();
 
-// POST /api/sync/fetch-real-data - Fetch fresh data from APIs
+// POST /api/sync/fetch-real-data - Fetch fresh data from Spotify API
 router.post('/fetch-real-data', async (req, res) => {
   try {
     console.log('🚀 Starting real data fetch via API endpoint...');
@@ -18,10 +17,6 @@ router.post('/fetch-real-data', async (req, res) => {
         error: 'Spotify API credentials not configured',
         details: 'Please set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET environment variables'
       });
-    }
-
-    if (!process.env.YOUTUBE_API_KEY) {
-      console.warn('⚠️ YouTube API key not configured. Only Spotify data will be fetched.');
     }
 
     // Start the data fetch process
@@ -46,13 +41,12 @@ router.post('/fetch-real-data', async (req, res) => {
   }
 });
 
-// POST /api/sync - Sync existing songs with latest stats
+// POST /api/sync - Sync existing songs with latest Spotify stats
 router.post('/', async (req, res) => {
   try {
     console.log('🔄 Starting sync process for existing songs...');
     
     const spotifyService = new SpotifyService();
-    const youtubeService = process.env.YOUTUBE_API_KEY ? new YouTubeService() : null;
     
     const songs = await Song.find({});
     
@@ -93,25 +87,6 @@ router.post('/', async (req, res) => {
           }
         }
 
-        // Update YouTube stats
-        if (song.youtubeId && youtubeService) {
-          try {
-            const youtubeStats = await youtubeService.getVideoStats(song.youtubeId);
-            if (youtubeStats) {
-              song.stats.youtube = {
-                views: youtubeStats.views,
-                likes: youtubeStats.likes,
-                comments: youtubeStats.comments,
-                dailyViews: Math.floor(youtubeStats.views * 0.001)
-              };
-              updated = true;
-              console.log(`  ✅ YouTube: ${youtubeStats.views.toLocaleString()} views`);
-            }
-          } catch (error) {
-            console.error(`  ❌ YouTube error: ${error.message}`);
-          }
-        }
-
         if (updated) {
           song.stats.lastUpdated = new Date();
           await song.save();
@@ -136,8 +111,6 @@ router.post('/', async (req, res) => {
       const albumSongs = await Song.find({ album: album._id });
       album.stats.totalStreams = albumSongs.reduce((sum, song) => 
         sum + (song.stats.spotify.totalStreams || 0), 0);
-      album.stats.totalViews = albumSongs.reduce((sum, song) => 
-        sum + (song.stats.youtube.views || 0), 0);
       await album.save();
     }
 
@@ -159,63 +132,6 @@ router.post('/', async (req, res) => {
     res.status(500).json({ 
       success: false,
       error: 'Sync process failed',
-      details: error.message 
-    });
-  }
-});
-
-// POST /api/sync/youtube - Sync only YouTube stats
-router.post('/youtube', async (req, res) => {
-  try {
-    if (!process.env.YOUTUBE_API_KEY) {
-      return res.status(500).json({
-        error: 'YouTube API key not configured'
-      });
-    }
-
-    const youtubeService = new YouTubeService();
-    const songs = await Song.find({ youtubeId: { $exists: true, $ne: null } });
-    
-    let successCount = 0;
-    let errorCount = 0;
-
-    console.log(`📺 Syncing YouTube stats for ${songs.length} songs...`);
-
-    for (const song of songs) {
-      try {
-        const youtubeStats = await youtubeService.getVideoStats(song.youtubeId);
-        if (youtubeStats) {
-          song.stats.youtube = {
-            views: youtubeStats.views,
-            likes: youtubeStats.likes,
-            comments: youtubeStats.comments,
-            dailyViews: Math.floor(youtubeStats.views * 0.001)
-          };
-          song.stats.lastUpdated = new Date();
-          await song.save();
-          successCount++;
-          console.log(`✅ ${song.title}: ${youtubeStats.views.toLocaleString()} views`);
-        }
-        
-        // Add delay to respect API rate limits
-        await new Promise(resolve => setTimeout(resolve, 300));
-      } catch (error) {
-        errorCount++;
-        console.error(`❌ Error syncing YouTube for ${song.title}:`, error);
-      }
-    }
-
-    res.json({
-      success: true,
-      message: 'YouTube sync completed',
-      stats: { totalSongs: songs.length, successCount, errorCount },
-      lastSync: new Date()
-    });
-  } catch (error) {
-    console.error('❌ YouTube sync error:', error);
-    res.status(500).json({ 
-      success: false,
-      error: 'YouTube sync failed',
       details: error.message 
     });
   }
@@ -279,14 +195,9 @@ router.get('/status', async (req, res) => {
     const albumCount = await Album.countDocuments();
     
     const songsWithSpotify = await Song.countDocuments({ spotifyId: { $exists: true, $ne: null } });
-    const songsWithYouTube = await Song.countDocuments({ youtubeId: { $exists: true, $ne: null } });
     
     const totalSpotifyStreams = await Song.aggregate([
       { $group: { _id: null, total: { $sum: '$stats.spotify.totalStreams' } } }
-    ]);
-    
-    const totalYouTubeViews = await Song.aggregate([
-      { $group: { _id: null, total: { $sum: '$stats.youtube.views' } } }
     ]);
 
     const lastUpdated = await Song.findOne({}, {}, { sort: { 'stats.lastUpdated': -1 } });
@@ -295,17 +206,14 @@ router.get('/status', async (req, res) => {
       database: {
         songs: songCount,
         albums: albumCount,
-        songsWithSpotify,
-        songsWithYouTube
+        songsWithSpotify
       },
       totals: {
-        spotifyStreams: totalSpotifyStreams[0]?.total || 0,
-        youtubeViews: totalYouTubeViews[0]?.total || 0
+        spotifyStreams: totalSpotifyStreams[0]?.total || 0
       },
       lastUpdated: lastUpdated?.stats?.lastUpdated || null,
       apiStatus: {
-        spotify: !!(process.env.SPOTIFY_CLIENT_ID && process.env.SPOTIFY_CLIENT_SECRET),
-        youtube: !!process.env.YOUTUBE_API_KEY
+        spotify: !!(process.env.SPOTIFY_CLIENT_ID && process.env.SPOTIFY_CLIENT_SECRET)
       }
     });
   } catch (error) {

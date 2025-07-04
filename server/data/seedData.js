@@ -41,7 +41,7 @@ const seedData = async () => {
 
     const createdAlbums = await Album.insertMany(albums);
     
-    // Create Songs
+    // Create Songs with Spotify-only data
     const songs = [
       {
         title: 'Dynamite',
@@ -59,12 +59,6 @@ const seedData = async () => {
             monthlyStreams: 45000000,
             dailyStreams: 1500000,
             popularity: 95
-          },
-          youtube: {
-            views: 1600000000,
-            likes: 32000000,
-            comments: 5400000,
-            dailyViews: 2000000
           }
         }
       },
@@ -84,12 +78,6 @@ const seedData = async () => {
             monthlyStreams: 42000000,
             dailyStreams: 1400000,
             popularity: 93
-          },
-          youtube: {
-            views: 900000000,
-            likes: 28000000,
-            comments: 4200000,
-            dailyViews: 1800000
           }
         }
       },
@@ -109,12 +97,6 @@ const seedData = async () => {
             monthlyStreams: 25000000,
             dailyStreams: 850000,
             popularity: 88
-          },
-          youtube: {
-            views: 650000000,
-            likes: 18000000,
-            comments: 2800000,
-            dailyViews: 1200000
           }
         }
       },
@@ -134,12 +116,6 @@ const seedData = async () => {
             monthlyStreams: 35000000,
             dailyStreams: 1200000,
             popularity: 91
-          },
-          youtube: {
-            views: 580000000,
-            likes: 15000000,
-            comments: 3200000,
-            dailyViews: 900000
           }
         }
       },
@@ -159,87 +135,6 @@ const seedData = async () => {
             monthlyStreams: 28000000,
             dailyStreams: 900000,
             popularity: 86
-          },
-          youtube: {
-            views: 450000000,
-            likes: 12000000,
-            comments: 2100000,
-            dailyViews: 800000
-          }
-        }
-      },
-      {
-        title: 'Fake Love',
-        artist: 'BTS',
-        album: createdAlbums[0]._id,
-        releaseDate: new Date('2018-05-18'),
-        duration: 242,
-        genres: ['K-Pop', 'Hip-Hop', 'R&B'],
-        mood: 'Sad',
-        isTitle: true,
-        thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&h=300&fit=crop',
-        stats: {
-          spotify: {
-            totalStreams: 1100000000,
-            monthlyStreams: 38000000,
-            dailyStreams: 1250000,
-            popularity: 89
-          },
-          youtube: {
-            views: 1200000000,
-            likes: 25000000,
-            comments: 4800000,
-            dailyViews: 1600000
-          }
-        }
-      },
-      {
-        title: 'Boy With Luv',
-        artist: 'BTS',
-        album: createdAlbums[0]._id,
-        releaseDate: new Date('2019-04-12'),
-        duration: 230,
-        genres: ['K-Pop', 'Pop', 'R&B'],
-        mood: 'Happy',
-        isTitle: true,
-        thumbnail: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop',
-        stats: {
-          spotify: {
-            totalStreams: 1300000000,
-            monthlyStreams: 40000000,
-            dailyStreams: 1350000,
-            popularity: 92
-          },
-          youtube: {
-            views: 1400000000,
-            likes: 30000000,
-            comments: 5200000,
-            dailyViews: 1900000
-          }
-        }
-      },
-      {
-        title: 'ON',
-        artist: 'BTS',
-        album: createdAlbums[0]._id,
-        releaseDate: new Date('2020-02-21'),
-        duration: 221,
-        genres: ['K-Pop', 'Hip-Hop', 'Rock'],
-        mood: 'Energetic',
-        isTitle: true,
-        thumbnail: 'https://images.unsplash.com/photo-1500462918059-b1a0cb512f1d?w=300&h=300&fit=crop',
-        stats: {
-          spotify: {
-            totalStreams: 850000000,
-            monthlyStreams: 32000000,
-            dailyStreams: 1050000,
-            popularity: 87
-          },
-          youtube: {
-            views: 720000000,
-            likes: 20000000,
-            comments: 3600000,
-            dailyViews: 1300000
           }
         }
       }
@@ -259,9 +154,6 @@ const seedData = async () => {
       // Calculate album stats
       album.stats.totalStreams = albumSongs.reduce((sum, song) => 
         sum + (song.stats.spotify.totalStreams || 0), 0
-      );
-      album.stats.totalViews = albumSongs.reduce((sum, song) => 
-        sum + (song.stats.youtube.views || 0), 0
       );
       
       await album.save();

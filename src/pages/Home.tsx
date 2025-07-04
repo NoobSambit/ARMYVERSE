@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { TrendingUp, Music, Users, Star, ArrowRight, Play, RefreshCw, Music2, Eye } from 'lucide-react';
+import { TrendingUp, Music, Users, Star, ArrowRight, Play, RefreshCw, Music2 } from 'lucide-react';
 import SongCard from '../components/SongCard';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { api } from '../services/api';
@@ -66,13 +66,6 @@ const Home = () => {
       platform: 'spotify'
     },
     {
-      title: 'YouTube Views',
-      value: stats?.summary?.totalViews || 0,
-      icon: Eye,
-      color: 'from-red-500 to-pink-500',
-      platform: 'youtube'
-    },
-    {
       title: 'Songs',
       value: stats?.summary?.totalSongs || 0,
       icon: Music,
@@ -83,6 +76,12 @@ const Home = () => {
       value: stats?.summary?.totalAlbums || 0,
       icon: Star,
       color: 'from-orange-500 to-yellow-500'
+    },
+    {
+      title: 'Avg Streams/Song',
+      value: stats?.summary?.averageStreamsPerSong || 0,
+      icon: TrendingUp,
+      color: 'from-blue-500 to-cyan-500'
     }
   ];
 
@@ -117,7 +116,7 @@ const Home = () => {
           transition={{ delay: 0.3 }}
           className="text-xl md:text-2xl text-white/80 mb-8 max-w-3xl mx-auto"
         >
-          Your ultimate destination for BTS music analytics, AI-powered playlists, and real-time streaming data
+          Your ultimate destination for BTS music analytics, AI-powered playlists, and real-time Spotify streaming data
         </motion.p>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -142,14 +141,14 @@ const Home = () => {
           <button
             onClick={handleFetchRealData}
             disabled={syncing}
-            className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 disabled:from-gray-500 disabled:to-gray-600 text-white px-8 py-3 rounded-lg font-semibold transition-all duration-300 flex items-center space-x-2"
+            className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:from-gray-500 disabled:to-gray-600 text-white px-8 py-3 rounded-lg font-semibold transition-all duration-300 flex items-center space-x-2"
           >
             {syncing ? (
               <LoadingSpinner size="sm" />
             ) : (
               <RefreshCw className="w-5 h-5" />
             )}
-            <span>{syncing ? 'Fetching...' : 'Fetch Real Data'}</span>
+            <span>{syncing ? 'Fetching...' : 'Fetch Spotify Data'}</span>
           </button>
         </motion.div>
       </motion.section>
@@ -163,7 +162,7 @@ const Home = () => {
         >
           <h3 className="text-yellow-300 font-bold text-lg mb-2">No Data Found</h3>
           <p className="text-yellow-200/80 mb-4">
-            Your database is empty. Click "Fetch Real Data" to populate it with live BTS streaming statistics from Spotify and YouTube.
+            Your database is empty. Click "Fetch Spotify Data" to populate it with live BTS streaming statistics from Spotify.
           </p>
           <button
             onClick={handleFetchRealData}
@@ -175,7 +174,7 @@ const Home = () => {
             ) : (
               <RefreshCw className="w-4 h-4" />
             )}
-            <span>{syncing ? 'Fetching Real Data...' : 'Fetch Real Data Now'}</span>
+            <span>{syncing ? 'Fetching Spotify Data...' : 'Fetch Spotify Data Now'}</span>
           </button>
         </motion.div>
       )}
@@ -205,12 +204,8 @@ const Home = () => {
                 <div className="text-right">
                   <span className="text-white/60 text-sm">{stat.title}</span>
                   {stat.platform && (
-                    <div className={`text-xs px-2 py-1 rounded-full mt-1 ${
-                      stat.platform === 'spotify' 
-                        ? 'bg-green-500/20 text-green-300' 
-                        : 'bg-red-500/20 text-red-300'
-                    }`}>
-                      {stat.platform === 'spotify' ? '🎵 Spotify' : '📺 YouTube'}
+                    <div className="text-xs px-2 py-1 rounded-full mt-1 bg-green-500/20 text-green-300">
+                      🎵 Spotify
                     </div>
                   )}
                 </div>
@@ -223,65 +218,41 @@ const Home = () => {
         })}
       </motion.section>
 
-      {/* Platform Breakdown */}
+      {/* Spotify Overview */}
       {stats?.summary?.totalSongs > 0 && (
         <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.3 }}
-          className="grid grid-cols-1 md:grid-cols-2 gap-8"
+          className="bg-green-500/10 backdrop-blur-lg rounded-xl p-6 border border-green-500/20"
         >
-          {/* Spotify Stats */}
-          <div className="bg-green-500/10 backdrop-blur-lg rounded-xl p-6 border border-green-500/20">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="bg-green-500 p-3 rounded-lg">
-                <Music2 className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-white">Spotify Analytics</h3>
-                <p className="text-green-300">Streaming Performance</p>
-              </div>
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="bg-green-500 p-3 rounded-lg">
+              <Music2 className="w-6 h-6 text-white" />
             </div>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-white/70">Total Streams</span>
-                <span className="text-white font-medium">
-                  {formatNumber(stats.summary.totalStreams)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-white/70">Avg per Song</span>
-                <span className="text-white font-medium">
-                  {formatNumber(stats.summary.averageStreamsPerSong)}
-                </span>
-              </div>
+            <div>
+              <h3 className="text-xl font-bold text-white">Spotify Analytics</h3>
+              <p className="text-green-300">Streaming Performance Overview</p>
             </div>
           </div>
-
-          {/* YouTube Stats */}
-          <div className="bg-red-500/10 backdrop-blur-lg rounded-xl p-6 border border-red-500/20">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="bg-red-500 p-3 rounded-lg">
-                <Eye className="w-6 h-6 text-white" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="text-center p-4 bg-green-500/10 rounded-lg">
+              <div className="text-2xl font-bold text-green-300">
+                {formatNumber(stats.summary.totalStreams)}
               </div>
-              <div>
-                <h3 className="text-xl font-bold text-white">YouTube Analytics</h3>
-                <p className="text-red-300">Video Performance</p>
-              </div>
+              <div className="text-white/70 text-sm">Total Streams</div>
             </div>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-white/70">Total Views</span>
-                <span className="text-white font-medium">
-                  {formatNumber(stats.summary.totalViews)}
-                </span>
+            <div className="text-center p-4 bg-green-500/10 rounded-lg">
+              <div className="text-2xl font-bold text-green-300">
+                {formatNumber(stats.summary.averageStreamsPerSong)}
               </div>
-              <div className="flex justify-between">
-                <span className="text-white/70">Avg per Song</span>
-                <span className="text-white font-medium">
-                  {formatNumber(stats.summary.averageViewsPerSong)}
-                </span>
+              <div className="text-white/70 text-sm">Avg per Song</div>
+            </div>
+            <div className="text-center p-4 bg-green-500/10 rounded-lg">
+              <div className="text-2xl font-bold text-green-300">
+                {stats.summary.totalSongs}
               </div>
+              <div className="text-white/70 text-sm">Total Songs</div>
             </div>
           </div>
         </motion.section>
@@ -339,22 +310,22 @@ const Home = () => {
         </div>
 
         <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 border border-white/20 text-center">
-          <div className="bg-gradient-to-r from-red-500 to-pink-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Eye className="w-8 h-8 text-white" />
-          </div>
-          <h3 className="text-xl font-bold text-white mb-2">YouTube Analytics</h3>
-          <p className="text-white/70">
-            Track video views, likes, comments, and engagement metrics from official BTS music videos.
-          </p>
-        </div>
-
-        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 border border-white/20 text-center">
           <div className="bg-gradient-to-r from-purple-500 to-indigo-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
             <TrendingUp className="w-8 h-8 text-white" />
           </div>
           <h3 className="text-xl font-bold text-white mb-2">Live Data Sync</h3>
           <p className="text-white/70">
-            Automatically fetch and update the latest streaming statistics from both platforms.
+            Automatically fetch and update the latest streaming statistics from Spotify.
+          </p>
+        </div>
+
+        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 border border-white/20 text-center">
+          <div className="bg-gradient-to-r from-pink-500 to-rose-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Music className="w-8 h-8 text-white" />
+          </div>
+          <h3 className="text-xl font-bold text-white mb-2">AI Playlists</h3>
+          <p className="text-white/70">
+            Create personalized BTS playlists using AI based on your mood and preferences.
           </p>
         </div>
       </motion.section>

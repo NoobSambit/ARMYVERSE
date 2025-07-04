@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BarChart3, TrendingUp, Music, Calendar, Filter, Search, Music2, Eye, RefreshCw } from 'lucide-react';
+import { BarChart3, TrendingUp, Music, Calendar, Filter, Search, Music2, RefreshCw } from 'lucide-react';
 import SongCard from '../components/SongCard';
 import StatChart from '../components/StatChart';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -63,18 +63,12 @@ const StatsDashboard = () => {
   const chartData = {
     topSongs: songs.slice(0, 10).map(song => ({
       name: song.title.length > 15 ? song.title.substring(0, 15) + '...' : song.title,
-      streams: song.stats.spotify.totalStreams,
-      views: song.stats.youtube.views
+      streams: song.stats.spotify.totalStreams
     })),
     albumStats: albums.map(album => ({
       name: album.title.length > 15 ? album.title.substring(0, 15) + '...' : album.title,
       streams: album.calculatedStats.totalStreams,
       songs: album.calculatedStats.songCount
-    })),
-    platformComparison: songs.slice(0, 10).map(song => ({
-      name: song.title.length > 12 ? song.title.substring(0, 12) + '...' : song.title,
-      spotify: song.stats.spotify.totalStreams / 1000000, // Convert to millions
-      youtube: song.stats.youtube.views / 1000000 // Convert to millions
     })),
     moodDistribution: songs.reduce((acc, song) => {
       if (song.mood) {
@@ -109,7 +103,7 @@ const StatsDashboard = () => {
           Analytics Dashboard
         </h1>
         <p className="text-white/80 text-lg">
-          Deep dive into BTS's performance across Spotify and YouTube
+          Deep dive into BTS's performance on Spotify
         </p>
       </motion.div>
 
@@ -129,7 +123,7 @@ const StatsDashboard = () => {
             <button
               onClick={handleSync}
               disabled={syncing}
-              className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 disabled:from-gray-500 disabled:to-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
+              className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:from-gray-500 disabled:to-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
             >
               {syncing ? (
                 <LoadingSpinner size="sm" />
@@ -148,13 +142,6 @@ const StatsDashboard = () => {
               </div>
               <div className="text-white/70 text-sm">Spotify Streams</div>
             </div>
-            <div className="text-center p-4 bg-red-500/10 rounded-lg border border-red-500/20">
-              <Eye className="w-6 h-6 text-red-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-red-300">
-                {(groupStats.summary.totalViews / 1000000000).toFixed(1)}B
-              </div>
-              <div className="text-white/70 text-sm">YouTube Views</div>
-            </div>
             <div className="text-center p-4 bg-purple-500/10 rounded-lg border border-purple-500/20">
               <Music className="w-6 h-6 text-purple-400 mx-auto mb-2" />
               <div className="text-2xl font-bold text-purple-300">
@@ -168,6 +155,13 @@ const StatsDashboard = () => {
                 {groupStats.summary.totalAlbums}
               </div>
               <div className="text-white/70 text-sm">Albums</div>
+            </div>
+            <div className="text-center p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
+              <TrendingUp className="w-6 h-6 text-blue-400 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-blue-300">
+                {(groupStats.summary.averageStreamsPerSong / 1000000).toFixed(1)}M
+              </div>
+              <div className="text-white/70 text-sm">Avg per Song</div>
             </div>
           </div>
         </motion.div>
@@ -189,12 +183,12 @@ const StatsDashboard = () => {
           color="#1DB954"
         />
         <StatChart
-          data={chartData.topSongs}
+          data={chartData.albumStats}
           type="bar"
-          title="📺 Top Songs by YouTube Views"
+          title="📀 Albums by Total Streams"
           xAxisKey="name"
-          yAxisKey="views"
-          color="#FF0000"
+          yAxisKey="streams"
+          color="#8B5CF6"
         />
       </motion.div>
 
@@ -205,12 +199,12 @@ const StatsDashboard = () => {
         className="grid grid-cols-1 lg:grid-cols-2 gap-8"
       >
         <StatChart
-          data={chartData.platformComparison}
+          data={chartData.topSongs}
           type="line"
-          title="📊 Platform Performance Comparison (Millions)"
+          title="📈 Streaming Trends"
           xAxisKey="name"
-          yAxisKey="spotify"
-          color="#8B5CF6"
+          yAxisKey="streams"
+          color="#10B981"
         />
         <StatChart
           data={moodChartData}
@@ -246,9 +240,8 @@ const StatsDashboard = () => {
             onChange={(e) => setSortBy(e.target.value)}
             className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500"
           >
-            <option value="totalStreams">Spotify Streams</option>
-            <option value="views">YouTube Views</option>
-            <option value="popularity">Spotify Popularity</option>
+            <option value="totalStreams">Total Streams</option>
+            <option value="popularity">Popularity</option>
           </select>
         </div>
       </motion.div>

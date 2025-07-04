@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Play, Heart, Share2, Calendar, TrendingUp, Eye, ThumbsUp, MessageCircle, Music2 } from 'lucide-react';
+import { Play, Heart, Share2, Calendar, Music2 } from 'lucide-react';
 
 interface SongCardProps {
   song: {
@@ -19,12 +19,6 @@ interface SongCardProps {
         monthlyStreams: number;
         dailyStreams: number;
         popularity: number;
-      };
-      youtube: {
-        views: number;
-        likes: number;
-        comments: number;
-        dailyViews: number;
       };
     };
     releaseDate: string;
@@ -114,35 +108,35 @@ const SongCard: React.FC<SongCardProps> = ({ song, onClick }) => {
       </div>
 
       {/* Spotify Stats Section */}
-      <div className="mb-4 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
-        <div className="flex items-center space-x-2 mb-2">
-          <Music2 className="w-4 h-4 text-green-400" />
-          <span className="text-green-300 font-medium text-sm">Spotify</span>
-          <span className="ml-auto text-green-300 text-xs">
+      <div className="mb-4 p-4 bg-green-500/10 rounded-lg border border-green-500/20">
+        <div className="flex items-center space-x-2 mb-3">
+          <Music2 className="w-5 h-5 text-green-400" />
+          <span className="text-green-300 font-medium">Spotify</span>
+          <span className="ml-auto text-green-300 text-sm">
             {song.stats.spotify.popularity}/100
           </span>
         </div>
-        <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="grid grid-cols-2 gap-3 text-sm">
           <div>
-            <span className="text-white/60">Total Streams</span>
+            <span className="text-white/60 text-xs">Total Streams</span>
             <div className="text-white font-medium">
               {formatNumber(song.stats.spotify.totalStreams)}
             </div>
           </div>
           <div>
-            <span className="text-white/60">Monthly</span>
+            <span className="text-white/60 text-xs">Monthly</span>
             <div className="text-white font-medium">
               {formatNumber(song.stats.spotify.monthlyStreams)}
             </div>
           </div>
           <div>
-            <span className="text-white/60">Daily</span>
+            <span className="text-white/60 text-xs">Daily</span>
             <div className="text-white font-medium">
               {formatNumber(song.stats.spotify.dailyStreams)}
             </div>
           </div>
           <div>
-            <span className="text-white/60">Popularity</span>
+            <span className="text-white/60 text-xs">Popularity</span>
             <div className="text-white font-medium">
               {song.stats.spotify.popularity}%
             </div>
@@ -150,85 +144,28 @@ const SongCard: React.FC<SongCardProps> = ({ song, onClick }) => {
         </div>
       </div>
 
-      {/* YouTube Stats Section */}
-      <div className="mb-4 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
-        <div className="flex items-center space-x-2 mb-2">
-          <Play className="w-4 h-4 text-red-400" />
-          <span className="text-red-300 font-medium text-sm">YouTube</span>
-          {song.stats.youtube.views > 0 && (
-            <span className="ml-auto text-red-300 text-xs">
-              {formatNumber(song.stats.youtube.views)} views
-            </span>
-          )}
-        </div>
-        {song.stats.youtube.views > 0 ? (
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="flex items-center space-x-1">
-              <Eye className="w-3 h-3 text-red-400" />
-              <div>
-                <span className="text-white/60">Views</span>
-                <div className="text-white font-medium">
-                  {formatNumber(song.stats.youtube.views)}
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center space-x-1">
-              <ThumbsUp className="w-3 h-3 text-red-400" />
-              <div>
-                <span className="text-white/60">Likes</span>
-                <div className="text-white font-medium">
-                  {formatNumber(song.stats.youtube.likes)}
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center space-x-1">
-              <MessageCircle className="w-3 h-3 text-red-400" />
-              <div>
-                <span className="text-white/60">Comments</span>
-                <div className="text-white font-medium">
-                  {formatNumber(song.stats.youtube.comments)}
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center space-x-1">
-              <TrendingUp className="w-3 h-3 text-red-400" />
-              <div>
-                <span className="text-white/60">Daily Views</span>
-                <div className="text-white font-medium">
-                  {formatNumber(song.stats.youtube.dailyViews)}
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-2">
-            <span className="text-white/50 text-xs">No YouTube data available</span>
-          </div>
-        )}
-      </div>
-
-      {/* Mood Badge */}
-      {song.mood && (
-        <div className="flex items-center justify-between">
+      {/* Mood and Badges */}
+      <div className="flex items-center justify-between">
+        {song.mood && (
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 border border-purple-500/30">
             {song.mood}
           </span>
-          
-          {/* Platform Badges */}
-          <div className="flex space-x-1">
-            {song.stats.spotify.popularity > 80 && (
-              <span className="px-2 py-1 bg-green-500/20 text-green-300 text-xs rounded-full">
-                🔥 Hot on Spotify
-              </span>
-            )}
-            {song.stats.youtube.views > 100000000 && (
-              <span className="px-2 py-1 bg-red-500/20 text-red-300 text-xs rounded-full">
-                📺 100M+ Views
-              </span>
-            )}
-          </div>
+        )}
+        
+        {/* Platform Badges */}
+        <div className="flex space-x-1">
+          {song.stats.spotify.popularity > 80 && (
+            <span className="px-2 py-1 bg-green-500/20 text-green-300 text-xs rounded-full">
+              🔥 Hot on Spotify
+            </span>
+          )}
+          {song.stats.spotify.totalStreams > 1000000000 && (
+            <span className="px-2 py-1 bg-green-500/20 text-green-300 text-xs rounded-full">
+              🎵 1B+ Streams
+            </span>
+          )}
         </div>
-      )}
+      </div>
     </motion.div>
   );
 };

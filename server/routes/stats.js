@@ -10,7 +10,7 @@ router.get('/songs', async (req, res) => {
     const { sort = 'totalStreams', limit = 20, page = 1 } = req.query;
     
     const sortField = sort === 'totalStreams' ? 'stats.spotify.totalStreams' : 
-                      sort === 'views' ? 'stats.youtube.views' : 
+                      sort === 'popularity' ? 'stats.spotify.popularity' : 
                       'stats.spotify.totalStreams';
     
     const songs = await Song.find({})
@@ -45,14 +45,11 @@ router.get('/albums', async (req, res) => {
     const albumsWithStats = albums.map(album => {
       const totalStreams = album.songs.reduce((sum, song) => 
         sum + (song.stats.spotify.totalStreams || 0), 0);
-      const totalViews = album.songs.reduce((sum, song) => 
-        sum + (song.stats.youtube.views || 0), 0);
 
       return {
         ...album.toObject(),
         calculatedStats: {
           totalStreams,
-          totalViews,
           songCount: album.songs.length
         }
       };
@@ -72,8 +69,6 @@ router.get('/group', async (req, res) => {
 
     const totalStreams = songs.reduce((sum, song) => 
       sum + (song.stats.spotify.totalStreams || 0), 0);
-    const totalViews = songs.reduce((sum, song) => 
-      sum + (song.stats.youtube.views || 0), 0);
     const totalSongs = songs.length;
     const totalAlbums = albums.length;
 
@@ -83,8 +78,7 @@ router.get('/group', async (req, res) => {
       .slice(0, 10)
       .map(song => ({
         title: song.title,
-        streams: song.stats.spotify.totalStreams,
-        views: song.stats.youtube.views
+        streams: song.stats.spotify.totalStreams
       }));
 
     // Get recent releases
@@ -100,11 +94,9 @@ router.get('/group', async (req, res) => {
     res.json({
       summary: {
         totalStreams,
-        totalViews,
         totalSongs,
         totalAlbums,
-        averageStreamsPerSong: Math.round(totalStreams / totalSongs),
-        averageViewsPerSong: Math.round(totalViews / totalSongs)
+        averageStreamsPerSong: Math.round(totalStreams / totalSongs)
       },
       topSongs,
       recentReleases,

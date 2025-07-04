@@ -25,7 +25,6 @@ const albumSchema = new mongoose.Schema({
   }],
   stats: {
     totalStreams: { type: Number, default: 0 },
-    totalViews: { type: Number, default: 0 },
     averageRating: { type: Number, default: 0 }
   },
   description: {
@@ -44,7 +43,6 @@ const albumSchema = new mongoose.Schema({
 albumSchema.virtual('calculatedStats').get(function() {
   return {
     totalStreams: this.stats.totalStreams,
-    totalViews: this.stats.totalViews,
     songCount: this.songs.length
   };
 });

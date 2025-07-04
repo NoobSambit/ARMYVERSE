@@ -2,13 +2,12 @@ import mongoose from 'mongoose';
 import Song from '../models/Song.js';
 import Album from '../models/Album.js';
 import SpotifyService from '../services/spotifyService.js';
-import YouTubeService from '../services/youtubeService.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 /**
- * Fetch real BTS data from Spotify and YouTube APIs
+ * Fetch real BTS data from Spotify API
  */
 const fetchRealBTSData = async () => {
   try {
@@ -24,17 +23,12 @@ const fetchRealBTSData = async () => {
       throw new Error('Spotify API credentials are required');
     }
     
-    if (!process.env.YOUTUBE_API_KEY) {
-      console.warn('⚠️ YouTube API key not found. YouTube stats will be skipped.');
-    }
-    
     // Connect to MongoDB
     await mongoose.connect(process.env.MONGO_URI);
     console.log('✅ Connected to MongoDB');
 
     // Initialize services
     const spotifyService = new SpotifyService();
-    const youtubeService = process.env.YOUTUBE_API_KEY ? new YouTubeService() : null;
 
     // Clear existing data
     console.log('🗑️ Clearing existing data...');
@@ -81,7 +75,6 @@ const fetchRealBTSData = async () => {
           songs: [],
           stats: {
             totalStreams: 0,
-            totalViews: 0,
             averageRating: 0
           },
           trackCount: spotifyAlbum.total_tracks
@@ -140,29 +133,12 @@ const fetchRealBTSData = async () => {
             
             const estimatedMonthlyStreams = Math.floor(estimatedTotalStreams * 0.05);
             const estimatedDailyStreams = Math.floor(estimatedMonthlyStreams / 30);
-
-            // Search for YouTube video
-            let youtubeData = null;
-            if (youtubeService) {
-              console.log(`         🔍 Searching YouTube...`);
-              try {
-                youtubeData = await youtubeService.searchAndGetStats(track.name);
-                if (youtubeData) {
-                  console.log(`         ✅ YouTube: ${youtubeData.views.toLocaleString()} views`);
-                } else {
-                  console.log(`         ⚠️ No YouTube video found`);
-                }
-              } catch (error) {
-                console.log(`         ❌ YouTube search failed: ${error.message}`);
-              }
-            }
             
-            // Create song document with clear Spotify/YouTube separation
+            // Create song document with Spotify data only
             const songData = {
               title: track.name,
               artist: 'BTS',
               spotifyId: track.id,
-              youtubeId: youtubeData?.videoId || null,
               album: createdAlbum._id,
               releaseDate: new Date(spotifyAlbum.release_date),
               duration: Math.round(track.duration_ms / 1000),
@@ -171,19 +147,13 @@ const fetchRealBTSData = async () => {
               isTitle: track.track_number === 1 || 
                        track.name.toLowerCase().includes('title') ||
                        spotifyAlbum.album_type === 'single',
-              thumbnail: youtubeData?.thumbnail || spotifyAlbum.images[0]?.url || '',
+              thumbnail: spotifyAlbum.images[0]?.url || '',
               stats: {
                 spotify: {
                   totalStreams: estimatedTotalStreams,
                   monthlyStreams: estimatedMonthlyStreams,
                   dailyStreams: estimatedDailyStreams,
                   popularity: trackDetails.popularity || 0
-                },
-                youtube: {
-                  views: youtubeData?.views || 0,
-                  likes: youtubeData?.likes || 0,
-                  comments: youtubeData?.comments || 0,
-                  dailyViews: youtubeData ? Math.floor(youtubeData.views * 0.001) : 0
                 },
                 lastUpdated: new Date()
               }
@@ -207,8 +177,6 @@ const fetchRealBTSData = async () => {
         createdAlbum.songs = albumSongs.map(song => song._id);
         createdAlbum.stats.totalStreams = albumSongs.reduce((sum, song) => 
           sum + (song.stats.spotify.totalStreams || 0), 0);
-        createdAlbum.stats.totalViews = albumSongs.reduce((sum, song) => 
-          sum + (song.stats.youtube.views || 0), 0);
         
         await createdAlbum.save();
         console.log(`   ✅ Album completed: ${albumSongs.length} songs, ${(createdAlbum.stats.totalStreams / 1000000).toFixed(1)}M streams`);
@@ -225,21 +193,15 @@ const fetchRealBTSData = async () => {
     console.log(`🎵 Songs created: ${allSongs.length}`);
     
     const totalSpotifyStreams = allSongs.reduce((sum, song) => sum + (song.stats.spotify.totalStreams || 0), 0);
-    const totalYouTubeViews = allSongs.reduce((sum, song) => sum + (song.stats.youtube.views || 0), 0);
-    const songsWithYouTube = allSongs.filter(song => song.stats.youtube.views > 0).length;
     
     console.log(`🎵 Total Spotify streams: ${(totalSpotifyStreams / 1000000000).toFixed(2)}B`);
-    console.log(`📺 Total YouTube views: ${(totalYouTubeViews / 1000000000).toFixed(2)}B`);
-    console.log(`📹 Songs with YouTube data: ${songsWithYouTube}/${allSongs.length}`);
     console.log(`📅 Completed at: ${new Date().toISOString()}`);
 
     return {
       success: true,
       albumsCreated: createdAlbums.length,
       songsCreated: allSongs.length,
-      totalSpotifyStreams,
-      totalYouTubeViews,
-      songsWithYouTube
+      totalSpotifyStreams
     };
 
   } catch (error) {
