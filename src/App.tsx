@@ -5,7 +5,6 @@ import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import StatsDashboard from './pages/StatsDashboard';
 import PlaylistCreator from './pages/PlaylistCreator';
-import ViewPlaylist from './pages/ViewPlaylist';
 import AIPlaylist from './pages/AIPlaylist';
 
 function App() {
@@ -30,7 +29,6 @@ function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/stats" element={<StatsDashboard />} />
                 <Route path="/playlist/create" element={<PlaylistCreator />} />
-                <Route path="/playlist/:id" element={<ViewPlaylist />} />
                 <Route path="/ai-playlist" element={<AIPlaylist />} />
               </Routes>
             </main>

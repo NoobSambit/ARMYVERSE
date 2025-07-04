@@ -1,35 +1,7 @@
 import express from 'express';
-import Playlist from '../models/Playlist.js';
-import Song from '../models/Song.js';
 import SpotifyService from '../services/spotifyService.js';
 
 const router = express.Router();
-
-// GET /api/playlist - Get playlist history (for analytics)
-router.get('/', async (req, res) => {
-  try {
-    const { type, limit = 20, page = 1 } = req.query;
-    
-    const filter = type ? { type } : {};
-    
-    const playlists = await Playlist.find(filter)
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .exec();
-
-    const totalPlaylists = await Playlist.countDocuments(filter);
-    
-    res.json({
-      playlists,
-      totalPages: Math.ceil(totalPlaylists / limit),
-      currentPage: page,
-      totalPlaylists
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
 // POST /api/playlist/create-spotify - Create playlist and export to Spotify
 router.post('/create-spotify', async (req, res) => {
@@ -53,40 +25,21 @@ router.post('/create-spotify', async (req, res) => {
     // Create track URIs for Spotify
     const trackUris = validTrackIds.map(id => `spotify:track:${id}`);
 
-    // For demo purposes, we'll simulate playlist creation
-    // In production, this would require user OAuth
+    // Create playlist on Spotify (mock for demo)
     const mockPlaylist = await spotifyService.createPlaylist(
-      'user_id', // Would be actual user ID
+      'user_id', // Would be actual user ID in production
       name,
       description,
       trackUris,
       true
     );
 
-    // Save playlist record for analytics
-    const playlistRecord = new Playlist({
-      name,
-      description,
-      type,
-      spotifyPlaylistId: mockPlaylist.id,
-      spotifyPlaylistUrl: mockPlaylist.external_urls.spotify,
-      songSpotifyIds: validTrackIds,
-      aiPrompt: aiPrompt || '',
-      aiExplanation: aiExplanation || '',
-      tags: tags || [],
-      mood,
-      exported: true,
-      exportedAt: new Date()
-    });
-
-    await playlistRecord.save();
-
     res.json({
       success: true,
       playlist: {
-        id: playlistRecord._id,
-        name: playlistRecord.name,
-        description: playlistRecord.description,
+        id: mockPlaylist.id,
+        name: mockPlaylist.name,
+        description: mockPlaylist.description,
         spotifyUrl: mockPlaylist.external_urls.spotify,
         trackCount: validTrackIds.length,
         exported: true
@@ -140,7 +93,7 @@ router.get('/trending', async (req, res) => {
   try {
     const spotifyService = new SpotifyService();
     
-    // Search for popular BTS tracks
+    // Get popular BTS tracks
     const tracks = await spotifyService.searchTracks('', 50);
     
     // Sort by popularity and return top tracks
@@ -166,20 +119,6 @@ router.get('/trending', async (req, res) => {
   } catch (error) {
     console.error('Error fetching trending tracks:', error);
     res.status(500).json({ error: 'Failed to fetch trending tracks' });
-  }
-});
-
-// DELETE /api/playlist/:id - Delete playlist record
-router.delete('/:id', async (req, res) => {
-  try {
-    const playlist = await Playlist.findByIdAndDelete(req.params.id);
-    if (!playlist) {
-      return res.status(404).json({ error: 'Playlist not found' });
-    }
-
-    res.json({ message: 'Playlist record deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
   }
 });
 

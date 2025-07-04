@@ -32,19 +32,15 @@ const Home = () => {
     }
   };
 
-  const handleFetchRealData = async () => {
+  const handleRefreshData = async () => {
     setSyncing(true);
     try {
-      const response = await api.post('/sync/fetch-real-data');
-      console.log('Data fetch result:', response.data);
-      
-      // Refresh the data after successful fetch
+      // Refresh the data from Spotify
       await fetchData();
-      
-      alert('✅ Real BTS data fetched successfully! Check the console for details.');
+      alert('✅ Data refreshed successfully from Spotify!');
     } catch (error) {
-      console.error('Error fetching real data:', error);
-      alert('❌ Error fetching real data. Check console for details.');
+      console.error('Error refreshing data:', error);
+      alert('❌ Error refreshing data. Check console for details.');
     } finally {
       setSyncing(false);
     }
@@ -139,7 +135,7 @@ const Home = () => {
             <span>Create AI Playlist</span>
           </Link>
           <button
-            onClick={handleFetchRealData}
+            onClick={handleRefreshData}
             disabled={syncing}
             className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:from-gray-500 disabled:to-gray-600 text-white px-8 py-3 rounded-lg font-semibold transition-all duration-300 flex items-center space-x-2"
           >
@@ -148,36 +144,10 @@ const Home = () => {
             ) : (
               <RefreshCw className="w-5 h-5" />
             )}
-            <span>{syncing ? 'Fetching...' : 'Fetch Spotify Data'}</span>
+            <span>{syncing ? 'Refreshing...' : 'Refresh Spotify Data'}</span>
           </button>
         </motion.div>
       </motion.section>
-
-      {/* Data Status Alert */}
-      {stats?.summary?.totalSongs === 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6 text-center"
-        >
-          <h3 className="text-yellow-300 font-bold text-lg mb-2">No Data Found</h3>
-          <p className="text-yellow-200/80 mb-4">
-            Your database is empty. Click "Fetch Spotify Data" to populate it with live BTS streaming statistics from Spotify.
-          </p>
-          <button
-            onClick={handleFetchRealData}
-            disabled={syncing}
-            className="bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-500 text-black px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 mx-auto"
-          >
-            {syncing ? (
-              <LoadingSpinner size="sm" />
-            ) : (
-              <RefreshCw className="w-4 h-4" />
-            )}
-            <span>{syncing ? 'Fetching Spotify Data...' : 'Fetch Spotify Data Now'}</span>
-          </button>
-        </motion.div>
-      )}
 
       {/* Stats Overview */}
       <motion.section
@@ -325,7 +295,7 @@ const Home = () => {
           </div>
           <h3 className="text-xl font-bold text-white mb-2">AI Playlists</h3>
           <p className="text-white/70">
-            Create personalized BTS playlists using AI based on your mood and preferences.
+            Create personalized BTS playlists using AI and export them directly to your Spotify account.
           </p>
         </div>
       </motion.section>

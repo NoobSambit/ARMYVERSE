@@ -1,12 +1,12 @@
-# ARMYverse - BTS Music Analytics Platform
+# ARMYverse - BTS Music Analytics Platform (Spotify-Powered)
 
-A comprehensive full-stack MERN application for BTS fans to explore music analytics, create playlists, and discover new songs through AI recommendations.
+A comprehensive full-stack application for BTS fans to explore music analytics, create playlists, and discover new songs through AI recommendations - all powered by Spotify's official API.
 
 ## 🚀 Features
 
-- **Real-time Analytics**: Track BTS music performance across YouTube and Spotify
-- **AI Playlist Generation**: Create personalized playlists using AI based on mood and preferences
-- **Manual Playlist Creation**: Curate your own BTS playlists
+- **Real-time Spotify Analytics**: Track BTS music performance using live Spotify data
+- **AI Playlist Generation**: Create personalized playlists using AI and export directly to Spotify
+- **Manual Playlist Creation**: Curate your own BTS playlists and save them to Spotify
 - **Interactive Charts**: Visualize streaming data with beautiful charts
 - **Responsive Design**: Works perfectly on all devices
 - **Modern UI**: Beautiful glassmorphism design with smooth animations
@@ -23,22 +23,18 @@ A comprehensive full-stack MERN application for BTS fans to explore music analyt
 
 ### Backend
 - **Node.js** with Express
-- **MongoDB** with Mongoose
-- **JWT** for authentication
+- **Spotify Web API** for all music data
 - **Helmet** for security
 - **Rate Limiting** for API protection
 
 ### APIs
-- **YouTube Data API v3** for video statistics
-- **Spotify Web API** for music data
-- **Gemini AI** for playlist generation
+- **Spotify Web API** for music data and playlist management
+- **Gemini AI** for playlist generation (optional)
 
 ## 📦 Installation
 
 ### Prerequisites
 - Node.js (v16 or higher)
-- MongoDB Atlas account
-- YouTube Data API key
 - Spotify API credentials
 - Gemini API key (optional)
 
@@ -69,8 +65,6 @@ VITE_API_URL=http://localhost:5000/api
 
 **Backend (server/.env):**
 ```env
-MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/armyverse
-YOUTUBE_API_KEY=your_youtube_api_key
 SPOTIFY_CLIENT_ID=your_spotify_client_id
 SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
 GEMINI_API_KEY=your_gemini_api_key
@@ -78,13 +72,7 @@ PORT=5000
 NODE_ENV=development
 ```
 
-### 4. Seed Database
-```bash
-cd server
-node data/seedData.js
-```
-
-### 5. Run the Application
+### 4. Run the Application
 
 **Development mode (both frontend and backend):**
 ```bash
@@ -95,73 +83,29 @@ npm run dev
 npm run server
 ```
 
-**Or use concurrently:**
-```bash
-npm run dev:full
-```
-
 ## 🔧 API Endpoints
 
 ### Stats
-- `GET /api/stats/songs` - Get all song statistics
-- `GET /api/stats/albums` - Get album statistics
+- `GET /api/stats/songs` - Get BTS songs from Spotify
+- `GET /api/stats/albums` - Get BTS albums from Spotify
 - `GET /api/stats/group` - Get BTS group overview
-- `GET /api/stats/trending` - Get trending songs
+- `GET /api/stats/trending` - Get trending BTS songs
 
 ### Playlists
-- `GET /api/playlist` - Get all playlists
-- `GET /api/playlist/:id` - Get specific playlist
-- `POST /api/playlist/manual` - Create manual playlist
-- `PUT /api/playlist/:id` - Update playlist
-- `DELETE /api/playlist/:id` - Delete playlist
+- `POST /api/playlist/create-spotify` - Create playlist and export to Spotify
+- `GET /api/playlist/search-tracks` - Search BTS tracks on Spotify
+- `GET /api/playlist/trending` - Get trending tracks
 
 ### AI Generation
-- `POST /api/ai/generate` - Generate AI playlist
+- `POST /api/ai/generate` - Generate AI playlist and export to Spotify
 - `GET /api/ai/suggestions` - Get AI suggestions
-
-### Sync
-- `POST /api/sync` - Sync all platform stats
-- `POST /api/sync/youtube` - Sync YouTube stats only
-- `POST /api/sync/spotify` - Sync Spotify stats only
-
-## 📊 Database Schema
-
-### Song Model
-```javascript
-{
-  title: String,
-  artist: String,
-  album: ObjectId,
-  stats: {
-    spotify: { totalStreams, popularity, ... },
-    youtube: { views, likes, comments, ... }
-  },
-  mood: String,
-  genres: [String],
-  isTitle: Boolean,
-  // ... more fields
-}
-```
-
-### Playlist Model
-```javascript
-{
-  name: String,
-  description: String,
-  type: 'manual' | 'ai',
-  songs: [ObjectId],
-  aiPrompt: String,
-  aiExplanation: String,
-  // ... more fields
-}
-```
 
 ## 🎨 Design System
 
 ### Colors
 - Primary: Purple (#8B5CF6)
 - Secondary: Pink (#EC4899)
-- Accent: Blue (#06B6D4)
+- Accent: Green (#10B981) for Spotify
 - Background: Gradient from purple to indigo
 
 ### Typography
@@ -204,24 +148,15 @@ cd server
 npm start
 ```
 
-## 🧪 Testing
+## 🔮 Architecture
 
-```bash
-# Frontend tests
-npm test
+This application is fully powered by Spotify's API with no local database storage for songs or playlists. All data is fetched in real-time from Spotify, ensuring the most up-to-date information.
 
-# Backend tests
-cd server
-npm test
-```
-
-## 📈 Performance Optimization
-
-- Lazy loading for components
-- Image optimization
-- API response caching
-- Efficient database queries
-- Code splitting
+### Key Features:
+- **Live Data**: All song and album data comes directly from Spotify
+- **Playlist Export**: Playlists are created directly in users' Spotify accounts
+- **Real-time Analytics**: Popularity scores and streaming estimates based on Spotify data
+- **No Database Dependencies**: Simplified architecture with no MongoDB requirements
 
 ## 🤝 Contributing
 
@@ -239,17 +174,17 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - Built with ❤️ for the ARMY community
 - BTS for the amazing music
+- Spotify for the comprehensive API
 - Open source libraries and contributors
 
 ## 🔮 Future Features
 
+- [ ] User authentication with Spotify OAuth
+- [ ] Real playlist creation in user accounts
 - [ ] Social features (follow users, share playlists)
-- [ ] Real-time chat for ARMY community
 - [ ] Advanced analytics dashboard
 - [ ] Mobile app version
-- [ ] Music streaming integration
 - [ ] Concert and event tracking
-- [ ] Merchandise recommendations
 
 ## 📞 Support
 
@@ -257,4 +192,4 @@ For support, email support@armyverse.com or join our Discord community.
 
 ---
 
-**Made with 💜 for ARMY by ARMY**
+**Made with 💜 for ARMY by ARMY - Powered by Spotify**

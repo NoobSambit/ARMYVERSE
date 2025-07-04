@@ -22,12 +22,6 @@ interface SongCardProps {
         popularity: number;
       };
     };
-    currentStats?: {
-      spotify: {
-        totalStreams: number;
-        popularity: number;
-      };
-    };
     popularity?: number;
     releaseDate: string;
     mood?: string;
@@ -61,7 +55,7 @@ const SongCard: React.FC<SongCardProps> = ({ song, onClick, showSpotifyLink = tr
   };
 
   // Get stats from either format (cached or live)
-  const stats = song.stats?.spotify || song.currentStats?.spotify;
+  const stats = song.stats?.spotify;
   const popularity = song.popularity || stats?.popularity || 0;
 
   return (

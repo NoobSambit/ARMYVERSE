@@ -30,11 +30,11 @@ export async function generatePlaylistWithAI(prompt, availableTracks, count = 10
 async function generateWithGemini(prompt, availableTracks, count, mood, genres) {
   try {
     // Prepare track data for AI
-    const trackData = availableTracks.map(track => ({
+    const trackData = availableTracks.slice(0, 50).map(track => ({
       id: track.id,
       title: track.title,
       artist: track.artist,
-      album: track.album,
+      album: track.album.title,
       popularity: track.popularity,
       uri: track.uri
     }));
@@ -43,7 +43,7 @@ async function generateWithGemini(prompt, availableTracks, count, mood, genres) 
       You are a BTS music expert. Based on the user's request: "${prompt}"
       
       Please select ${count} songs from the following BTS songs and create a playlist:
-      ${JSON.stringify(trackData.slice(0, 50), null, 2)} // Limit for API size
+      ${JSON.stringify(trackData, null, 2)}
       
       Return a JSON response with:
       {

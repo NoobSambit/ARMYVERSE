@@ -1,7 +1,7 @@
 {
   "name": "armyverse-server",
   "version": "1.0.0",
-  "description": "ARMYverse Backend - BTS Music Analytics API",
+  "description": "ARMYverse Backend - BTS Music Analytics API (Spotify-Powered)",
   "main": "server.js",
   "type": "module",
   "scripts": {
@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "express": "^4.18.2",
-    "mongoose": "^8.1.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.1",
     "axios": "^1.6.7",

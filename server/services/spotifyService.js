@@ -75,6 +75,32 @@ class SpotifyService {
   }
 
   /**
+   * Get BTS top tracks
+   */
+  async getArtistTopTracks(artistId = '3Nrfpe0tUJi4K4DXYWgMUX') {
+    try {
+      const token = await this.getAccessToken();
+      
+      const response = await axios.get(
+        `https://api.spotify.com/v1/artists/${artistId}/top-tracks`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          params: {
+            market: 'US'
+          }
+        }
+      );
+
+      return response.data.tracks;
+    } catch (error) {
+      console.error('❌ Error fetching BTS top tracks:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Get all BTS albums
    */
   async getArtistAlbums(artistId = '3Nrfpe0tUJi4K4DXYWgMUX') {
@@ -186,29 +212,6 @@ class SpotifyService {
     } catch (error) {
       console.error(`❌ Error fetching track details for ${trackId}:`, error.response?.data || error.message);
       throw error;
-    }
-  }
-
-  /**
-   * Get audio features for a track
-   */
-  async getTrackAudioFeatures(trackId) {
-    try {
-      const token = await this.getAccessToken();
-      
-      const response = await axios.get(
-        `https://api.spotify.com/v1/audio-features/${trackId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
-
-      return response.data;
-    } catch (error) {
-      console.error(`❌ Error fetching audio features for ${trackId}:`, error.response?.data || error.message);
-      return null;
     }
   }
 

@@ -1,6 +1,4 @@
 import express from 'express';
-import Song from '../models/Song.js';
-import Playlist from '../models/Playlist.js';
 import SpotifyService from '../services/spotifyService.js';
 import { generatePlaylistWithAI } from '../services/aiService.js';
 
@@ -33,7 +31,10 @@ router.post('/generate', async (req, res) => {
       id: track.id,
       title: track.name,
       artist: track.artists.map(a => a.name).join(', '),
-      album: track.album.name,
+      album: {
+        title: track.album.name,
+        cover: track.album.images[0]?.url || ''
+      },
       popularity: track.popularity,
       uri: track.uri,
       spotifyUrl: track.external_urls.spotify,
@@ -50,42 +51,24 @@ router.post('/generate', async (req, res) => {
       });
     }
 
-    // Get selected track IDs
-    const selectedTrackIds = aiResult.tracks.map(track => track.id);
+    // Get selected track URIs
+    const selectedTrackUris = aiResult.tracks.map(track => track.uri);
 
-    // Create playlist on Spotify
+    // Create playlist on Spotify (mock for demo)
     const spotifyPlaylist = await spotifyService.createPlaylist(
       'user_id', // Would be actual user ID in production
       aiResult.name || `AI Playlist: ${prompt.substring(0, 50)}`,
       aiResult.description || `AI-generated playlist based on: "${prompt}"`,
-      aiResult.tracks.map(track => track.uri),
+      selectedTrackUris,
       true
     );
-
-    // Save playlist record for analytics
-    const playlistRecord = new Playlist({
-      name: aiResult.name || `AI Playlist: ${prompt.substring(0, 50)}`,
-      description: aiResult.description || '',
-      type: 'ai',
-      spotifyPlaylistId: spotifyPlaylist.id,
-      spotifyPlaylistUrl: spotifyPlaylist.external_urls.spotify,
-      songSpotifyIds: selectedTrackIds,
-      aiPrompt: prompt,
-      aiExplanation: aiResult.explanation || '',
-      tags: aiResult.tags || [],
-      mood: mood || aiResult.mood,
-      exported: true,
-      exportedAt: new Date()
-    });
-
-    await playlistRecord.save();
 
     res.json({
       success: true,
       playlist: {
-        id: playlistRecord._id,
-        name: playlistRecord.name,
-        description: playlistRecord.description,
+        id: spotifyPlaylist.id,
+        name: aiResult.name || `AI Playlist: ${prompt.substring(0, 50)}`,
+        description: aiResult.description || '',
         tracks: aiResult.tracks,
         spotifyUrl: spotifyPlaylist.external_urls.spotify,
         exported: true
