@@ -1,11 +1,12 @@
 import express from 'express';
 import Song from '../models/Song.js';
 import Playlist from '../models/Playlist.js';
+import SpotifyService from '../services/spotifyService.js';
 import { generatePlaylistWithAI } from '../services/aiService.js';
 
 const router = express.Router();
 
-// POST /api/ai/generate - Generate AI playlist
+// POST /api/ai/generate - Generate AI playlist and export to Spotify
 router.post('/generate', async (req, res) => {
   try {
     const { prompt, count = 10, mood, genres } = req.body;
@@ -16,50 +17,82 @@ router.post('/generate', async (req, res) => {
       });
     }
 
-    // Get all available songs for AI to choose from
-    const allSongs = await Song.find({})
-      .populate('album', 'title')
-      .exec();
+    const spotifyService = new SpotifyService();
 
-    if (allSongs.length === 0) {
+    // Search for BTS tracks on Spotify directly
+    const searchResults = await spotifyService.searchTracks('', 100); // Get more tracks for AI to choose from
+
+    if (searchResults.length === 0) {
       return res.status(400).json({ 
-        error: 'No songs available in database' 
+        error: 'No BTS tracks found on Spotify' 
       });
     }
 
-    // Generate playlist using AI
-    const aiResult = await generatePlaylistWithAI(prompt, allSongs, count, mood, genres);
+    // Format tracks for AI processing
+    const availableTracks = searchResults.map(track => ({
+      id: track.id,
+      title: track.name,
+      artist: track.artists.map(a => a.name).join(', '),
+      album: track.album.name,
+      popularity: track.popularity,
+      uri: track.uri,
+      spotifyUrl: track.external_urls.spotify,
+      duration: Math.round(track.duration_ms / 1000),
+      releaseDate: track.album.release_date
+    }));
 
-    if (!aiResult || !aiResult.songs || aiResult.songs.length === 0) {
+    // Generate playlist using AI
+    const aiResult = await generatePlaylistWithAI(prompt, availableTracks, count, mood, genres);
+
+    if (!aiResult || !aiResult.tracks || aiResult.tracks.length === 0) {
       return res.status(500).json({ 
         error: 'AI service failed to generate playlist' 
       });
     }
 
-    // Create and save the AI playlist
-    const playlist = new Playlist({
+    // Get selected track IDs
+    const selectedTrackIds = aiResult.tracks.map(track => track.id);
+
+    // Create playlist on Spotify
+    const spotifyPlaylist = await spotifyService.createPlaylist(
+      'user_id', // Would be actual user ID in production
+      aiResult.name || `AI Playlist: ${prompt.substring(0, 50)}`,
+      aiResult.description || `AI-generated playlist based on: "${prompt}"`,
+      aiResult.tracks.map(track => track.uri),
+      true
+    );
+
+    // Save playlist record for analytics
+    const playlistRecord = new Playlist({
       name: aiResult.name || `AI Playlist: ${prompt.substring(0, 50)}`,
       description: aiResult.description || '',
       type: 'ai',
-      songs: aiResult.songs,
+      spotifyPlaylistId: spotifyPlaylist.id,
+      spotifyPlaylistUrl: spotifyPlaylist.external_urls.spotify,
+      songSpotifyIds: selectedTrackIds,
       aiPrompt: prompt,
       aiExplanation: aiResult.explanation || '',
-      mood: mood || null,
       tags: aiResult.tags || [],
-      duration: aiResult.duration || 0
+      mood: mood || aiResult.mood,
+      exported: true,
+      exportedAt: new Date()
     });
 
-    await playlist.save();
-
-    // Populate the playlist before returning
-    const populatedPlaylist = await Playlist.findById(playlist._id)
-      .populate('songs', 'title artist duration thumbnail stats album')
-      .exec();
+    await playlistRecord.save();
 
     res.json({
-      playlist: populatedPlaylist,
+      success: true,
+      playlist: {
+        id: playlistRecord._id,
+        name: playlistRecord.name,
+        description: playlistRecord.description,
+        tracks: aiResult.tracks,
+        spotifyUrl: spotifyPlaylist.external_urls.spotify,
+        exported: true
+      },
       explanation: aiResult.explanation,
-      confidence: aiResult.confidence || 0.8
+      confidence: aiResult.confidence || 0.8,
+      spotifyPlaylist
     });
 
   } catch (error) {
@@ -74,28 +107,38 @@ router.post('/generate', async (req, res) => {
 // GET /api/ai/suggestions - Get AI suggestions based on user preferences
 router.get('/suggestions', async (req, res) => {
   try {
-    const { mood, genre, bias, limit = 5 } = req.query;
+    const { mood, genre, limit = 5 } = req.query;
 
-    // Simple AI-like suggestions based on filters
-    let filter = {};
+    const spotifyService = new SpotifyService();
     
-    if (mood) filter.mood = mood;
-    if (genre) filter.genres = genre;
+    // Build search query based on preferences
+    let searchQuery = '';
+    if (mood) searchQuery += ` ${mood}`;
+    if (genre) searchQuery += ` ${genre}`;
 
-    const suggestions = await Song.find(filter)
-      .populate('album', 'title cover')
-      .sort({ 'stats.spotify.popularity': -1 })
-      .limit(limit * 1)
-      .exec();
+    const tracks = await spotifyService.searchTracks(searchQuery.trim() || '', limit * 2);
 
-    // Generate simple explanations
-    const suggestionsWithExplanations = suggestions.map(song => ({
-      ...song.toObject(),
-      explanation: `Perfect for ${mood || 'any'} mood${genre ? ` with ${genre} vibes` : ''}`
-    }));
+    // Format and filter results
+    const suggestions = tracks
+      .slice(0, limit)
+      .map(track => ({
+        id: track.id,
+        title: track.name,
+        artist: track.artists.map(a => a.name).join(', '),
+        album: {
+          title: track.album.name,
+          cover: track.album.images[0]?.url || ''
+        },
+        duration: Math.round(track.duration_ms / 1000),
+        spotifyUrl: track.external_urls.spotify,
+        uri: track.uri,
+        popularity: track.popularity,
+        explanation: `Perfect for ${mood || 'any'} mood${genre ? ` with ${genre} vibes` : ''}`
+      }));
 
-    res.json(suggestionsWithExplanations);
+    res.json(suggestions);
   } catch (error) {
+    console.error('Error getting AI suggestions:', error);
     res.status(500).json({ error: error.message });
   }
 });

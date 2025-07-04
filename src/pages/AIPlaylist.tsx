@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Send, Music, Lightbulb, Wand2, RefreshCw } from 'lucide-react';
+import { Sparkles, Send, Music, Lightbulb, Wand2, RefreshCw, ExternalLink } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import SongCard from '../components/SongCard';
 import { api } from '../services/api';
@@ -8,8 +8,7 @@ import { api } from '../services/api';
 const AIPlaylist = () => {
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
-  const [playlist, setPlaylist] = useState<any>(null);
-  const [aiExplanation, setAiExplanation] = useState('');
+  const [result, setResult] = useState<any>(null);
 
   const promptSuggestions = [
     "Create a upbeat BTS playlist for working out",
@@ -37,11 +36,21 @@ const AIPlaylist = () => {
         genres: []
       });
 
-      setPlaylist(response.data.playlist);
-      setAiExplanation(response.data.explanation);
+      if (response.data.success) {
+        setResult(response.data);
+        
+        // Show success message and option to open in Spotify
+        const openSpotify = window.confirm(
+          `✅ AI Playlist "${response.data.playlist.name}" created successfully!\n\nWould you like to open it in Spotify now?`
+        );
+        
+        if (openSpotify && response.data.playlist.spotifyUrl) {
+          window.open(response.data.playlist.spotifyUrl, '_blank');
+        }
+      }
     } catch (error) {
       console.error('Error generating playlist:', error);
-      alert('Error generating playlist. Please try again.');
+      alert('❌ Error generating playlist. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -53,8 +62,13 @@ const AIPlaylist = () => {
 
   const handleReset = () => {
     setPrompt('');
-    setPlaylist(null);
-    setAiExplanation('');
+    setResult(null);
+  };
+
+  const handleOpenSpotify = () => {
+    if (result?.playlist?.spotifyUrl) {
+      window.open(result.playlist.spotifyUrl, '_blank');
+    }
   };
 
   return (
@@ -69,7 +83,7 @@ const AIPlaylist = () => {
           AI Playlist Generator
         </h1>
         <p className="text-white/80 text-lg max-w-2xl mx-auto">
-          Tell me what you're feeling or what you need, and I'll create the perfect BTS playlist just for you
+          Tell me what you're feeling or what you need, and I'll create the perfect BTS playlist and add it to your Spotify
         </p>
       </motion.div>
 
@@ -106,7 +120,7 @@ const AIPlaylist = () => {
                 ) : (
                   <>
                     <Wand2 className="w-5 h-5" />
-                    <span>Generate Playlist</span>
+                    <span>Generate & Export to Spotify</span>
                   </>
                 )}
               </button>
@@ -147,7 +161,7 @@ const AIPlaylist = () => {
       </motion.div>
 
       {/* Generated Playlist */}
-      {playlist && (
+      {result && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -160,37 +174,44 @@ const AIPlaylist = () => {
               <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-3 rounded-lg">
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
-              <div>
-                <h2 className="text-2xl font-bold text-white">{playlist.name}</h2>
-                <p className="text-white/70">{playlist.description}</p>
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold text-white">{result.playlist.name}</h2>
+                <p className="text-white/70">{result.playlist.description}</p>
               </div>
+              <button
+                onClick={handleOpenSpotify}
+                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>Open in Spotify</span>
+              </button>
             </div>
             
             {/* Playlist Stats */}
             <div className="flex items-center space-x-6 text-white/70 text-sm mb-4">
               <div className="flex items-center space-x-1">
                 <Music className="w-4 h-4" />
-                <span>{playlist.songs.length} songs</span>
+                <span>{result.playlist.tracks.length} songs</span>
               </div>
               <div className="flex items-center space-x-1">
-                <span>AI Generated</span>
+                <span>✅ Exported to Spotify</span>
               </div>
             </div>
 
             {/* AI Explanation */}
-            {aiExplanation && (
+            {result.explanation && (
               <div className="bg-white/5 rounded-lg p-4 border border-white/10">
                 <h3 className="text-white font-medium mb-2">Why I chose these songs:</h3>
-                <p className="text-white/80 text-sm italic">"{aiExplanation}"</p>
+                <p className="text-white/80 text-sm italic">"{result.explanation}"</p>
               </div>
             )}
           </div>
 
           {/* Songs Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {playlist.songs.map((song: any, index: number) => (
+            {result.playlist.tracks.map((song: any, index: number) => (
               <motion.div
-                key={song._id}
+                key={song.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
@@ -211,13 +232,13 @@ const AIPlaylist = () => {
         >
           <LoadingSpinner size="lg" text="AI is crafting your perfect playlist..." />
           <p className="text-white/60 mt-4">
-            Analyzing your preferences and selecting the best BTS songs...
+            Analyzing your preferences and creating your Spotify playlist...
           </p>
         </motion.div>
       )}
 
       {/* Empty State */}
-      {!playlist && !loading && (
+      {!result && !loading && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -228,7 +249,7 @@ const AIPlaylist = () => {
           </div>
           <h3 className="text-white text-xl font-semibold">Ready to create magic?</h3>
           <p className="text-white/70 max-w-md mx-auto">
-            Enter your prompt above and let AI create the perfect BTS playlist tailored to your mood and preferences.
+            Enter your prompt above and let AI create the perfect BTS playlist tailored to your mood and export it directly to your Spotify account.
           </p>
         </motion.div>
       )}

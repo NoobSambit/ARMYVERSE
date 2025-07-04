@@ -1,19 +1,20 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Play, Heart, Share2, Calendar, Music2 } from 'lucide-react';
+import { Play, Heart, Share2, Calendar, Music2, ExternalLink } from 'lucide-react';
 
 interface SongCardProps {
   song: {
-    _id: string;
+    id?: string;
+    _id?: string;
     title: string;
     artist: string;
     album: {
       title: string;
       cover: string;
     };
-    thumbnail: string;
+    thumbnail?: string;
     duration: number;
-    stats: {
+    stats?: {
       spotify: {
         totalStreams: number;
         monthlyStreams: number;
@@ -21,14 +22,24 @@ interface SongCardProps {
         popularity: number;
       };
     };
+    currentStats?: {
+      spotify: {
+        totalStreams: number;
+        popularity: number;
+      };
+    };
+    popularity?: number;
     releaseDate: string;
-    mood: string;
-    isTitle: boolean;
+    mood?: string;
+    isTitle?: boolean;
+    spotifyUrl?: string;
+    uri?: string;
   };
   onClick?: () => void;
+  showSpotifyLink?: boolean;
 }
 
-const SongCard: React.FC<SongCardProps> = ({ song, onClick }) => {
+const SongCard: React.FC<SongCardProps> = ({ song, onClick, showSpotifyLink = true }) => {
   const formatNumber = (num: number) => {
     if (num >= 1000000000) return `${(num / 1000000000).toFixed(1)}B`;
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -41,6 +52,17 @@ const SongCard: React.FC<SongCardProps> = ({ song, onClick }) => {
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
+
+  const handleSpotifyClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (song.spotifyUrl) {
+      window.open(song.spotifyUrl, '_blank');
+    }
+  };
+
+  // Get stats from either format (cached or live)
+  const stats = song.stats?.spotify || song.currentStats?.spotify;
+  const popularity = song.popularity || stats?.popularity || 0;
 
   return (
     <motion.div
@@ -90,6 +112,17 @@ const SongCard: React.FC<SongCardProps> = ({ song, onClick }) => {
 
         {/* Actions */}
         <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          {showSpotifyLink && song.spotifyUrl && (
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={handleSpotifyClick}
+              className="p-2 rounded-full bg-green-500/20 text-green-400 hover:text-green-300 hover:bg-green-500/30"
+              title="Open in Spotify"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </motion.button>
+          )}
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
@@ -113,35 +146,49 @@ const SongCard: React.FC<SongCardProps> = ({ song, onClick }) => {
           <Music2 className="w-5 h-5 text-green-400" />
           <span className="text-green-300 font-medium">Spotify</span>
           <span className="ml-auto text-green-300 text-sm">
-            {song.stats.spotify.popularity}/100
+            {popularity}/100
           </span>
         </div>
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <span className="text-white/60 text-xs">Total Streams</span>
-            <div className="text-white font-medium">
-              {formatNumber(song.stats.spotify.totalStreams)}
+        
+        {stats ? (
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            {stats.totalStreams && (
+              <div>
+                <span className="text-white/60 text-xs">Total Streams</span>
+                <div className="text-white font-medium">
+                  {formatNumber(stats.totalStreams)}
+                </div>
+              </div>
+            )}
+            {stats.monthlyStreams && (
+              <div>
+                <span className="text-white/60 text-xs">Monthly</span>
+                <div className="text-white font-medium">
+                  {formatNumber(stats.monthlyStreams)}
+                </div>
+              </div>
+            )}
+            {stats.dailyStreams && (
+              <div>
+                <span className="text-white/60 text-xs">Daily</span>
+                <div className="text-white font-medium">
+                  {formatNumber(stats.dailyStreams)}
+                </div>
+              </div>
+            )}
+            <div>
+              <span className="text-white/60 text-xs">Popularity</span>
+              <div className="text-white font-medium">
+                {popularity}%
+              </div>
             </div>
           </div>
-          <div>
-            <span className="text-white/60 text-xs">Monthly</span>
-            <div className="text-white font-medium">
-              {formatNumber(song.stats.spotify.monthlyStreams)}
-            </div>
+        ) : (
+          <div className="text-center py-2">
+            <div className="text-white font-medium text-lg">{popularity}%</div>
+            <span className="text-white/60 text-xs">Popularity Score</span>
           </div>
-          <div>
-            <span className="text-white/60 text-xs">Daily</span>
-            <div className="text-white font-medium">
-              {formatNumber(song.stats.spotify.dailyStreams)}
-            </div>
-          </div>
-          <div>
-            <span className="text-white/60 text-xs">Popularity</span>
-            <div className="text-white font-medium">
-              {song.stats.spotify.popularity}%
-            </div>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Mood and Badges */}
@@ -154,12 +201,12 @@ const SongCard: React.FC<SongCardProps> = ({ song, onClick }) => {
         
         {/* Platform Badges */}
         <div className="flex space-x-1">
-          {song.stats.spotify.popularity > 80 && (
+          {popularity > 80 && (
             <span className="px-2 py-1 bg-green-500/20 text-green-300 text-xs rounded-full">
               🔥 Hot on Spotify
             </span>
           )}
-          {song.stats.spotify.totalStreams > 1000000000 && (
+          {stats?.totalStreams && stats.totalStreams > 1000000000 && (
             <span className="px-2 py-1 bg-green-500/20 text-green-300 text-xs rounded-full">
               🎵 1B+ Streams
             </span>

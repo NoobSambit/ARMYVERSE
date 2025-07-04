@@ -1,59 +1,55 @@
 import axios from 'axios';
 
 /**
- * Generate playlist using AI service
+ * Generate playlist using AI service with Spotify tracks
  * @param {string} prompt - User's prompt for playlist generation
- * @param {Array} availableSongs - All available songs in database
+ * @param {Array} availableTracks - All available tracks from Spotify
  * @param {number} count - Number of songs to include
  * @param {string} mood - Optional mood filter
  * @param {Array} genres - Optional genre filters
  * @returns {Object} AI generated playlist result
  */
-export async function generatePlaylistWithAI(prompt, availableSongs, count = 10, mood = null, genres = []) {
+export async function generatePlaylistWithAI(prompt, availableTracks, count = 10, mood = null, genres = []) {
   try {
-    // For demo purposes, we'll use a simple AI simulation
-    // In production, replace this with actual AI service calls
-    
     if (process.env.GEMINI_API_KEY) {
-      return await generateWithGemini(prompt, availableSongs, count, mood, genres);
+      return await generateWithGemini(prompt, availableTracks, count, mood, genres);
     } else {
       // Fallback to smart filtering when no AI service is available
-      return generateWithSmartFiltering(prompt, availableSongs, count, mood, genres);
+      return generateWithSmartFiltering(prompt, availableTracks, count, mood, genres);
     }
   } catch (error) {
     console.error('AI service error:', error);
     // Fallback to smart filtering on error
-    return generateWithSmartFiltering(prompt, availableSongs, count, mood, genres);
+    return generateWithSmartFiltering(prompt, availableTracks, count, mood, genres);
   }
 }
 
 /**
  * Generate playlist using Gemini AI
  */
-async function generateWithGemini(prompt, availableSongs, count, mood, genres) {
+async function generateWithGemini(prompt, availableTracks, count, mood, genres) {
   try {
-    // Prepare song data for AI
-    const songData = availableSongs.map(song => ({
-      id: song._id,
-      title: song.title,
-      album: song.album?.title || 'Unknown',
-      mood: song.mood,
-      genres: song.genres,
-      popularity: song.stats?.spotify?.popularity || 0,
-      isTitle: song.isTitle
+    // Prepare track data for AI
+    const trackData = availableTracks.map(track => ({
+      id: track.id,
+      title: track.title,
+      artist: track.artist,
+      album: track.album,
+      popularity: track.popularity,
+      uri: track.uri
     }));
 
     const aiPrompt = `
       You are a BTS music expert. Based on the user's request: "${prompt}"
       
       Please select ${count} songs from the following BTS songs and create a playlist:
-      ${JSON.stringify(songData, null, 2)}
+      ${JSON.stringify(trackData.slice(0, 50), null, 2)} // Limit for API size
       
       Return a JSON response with:
       {
         "name": "Creative playlist name",
         "description": "Brief description of the playlist",
-        "songs": ["songId1", "songId2", ...],
+        "trackIds": ["trackId1", "trackId2", ...],
         "explanation": "Why these songs were chosen",
         "tags": ["tag1", "tag2", ...],
         "mood": "Overall mood",
@@ -80,17 +76,14 @@ async function generateWithGemini(prompt, availableSongs, count, mood, genres) {
     const aiResponse = response.data.candidates[0].content.parts[0].text;
     const result = JSON.parse(aiResponse);
 
-    // Validate and calculate duration
-    const selectedSongs = availableSongs.filter(song => 
-      result.songs.includes(song._id.toString())
+    // Get selected tracks
+    const selectedTracks = availableTracks.filter(track => 
+      result.trackIds.includes(track.id)
     );
-    
-    const duration = selectedSongs.reduce((sum, song) => sum + (song.duration || 0), 0);
 
     return {
       ...result,
-      songs: selectedSongs.map(song => song._id),
-      duration
+      tracks: selectedTracks
     };
   } catch (error) {
     console.error('Gemini API error:', error);
@@ -101,7 +94,7 @@ async function generateWithGemini(prompt, availableSongs, count, mood, genres) {
 /**
  * Smart filtering fallback when AI service is not available
  */
-function generateWithSmartFiltering(prompt, availableSongs, count, mood, genres) {
+function generateWithSmartFiltering(prompt, availableTracks, count, mood, genres) {
   const lowerPrompt = prompt.toLowerCase();
   
   // Define keywords for different moods and themes
@@ -126,68 +119,43 @@ function generateWithSmartFiltering(prompt, availableSongs, count, mood, genres)
     }
   }
 
-  // Filter songs based on criteria
-  let filteredSongs = availableSongs;
+  // Filter tracks based on criteria
+  let filteredTracks = [...availableTracks];
 
-  // Apply mood filter
+  // Apply popularity-based filtering for mood
   if (detectedMood) {
-    filteredSongs = filteredSongs.filter(song => 
-      song.mood === detectedMood || 
-      (song.genres && song.genres.some(genre => {
-        if (detectedMood === 'Happy' && ['Dance', 'Pop'].includes(genre)) return true;
-        if (detectedMood === 'Sad' && ['Ballad', 'R&B'].includes(genre)) return true;
-        if (detectedMood === 'Energetic' && ['Hip-Hop', 'Rock'].includes(genre)) return true;
-        return false;
-      }))
-    );
-  }
-
-  // Apply genre filter
-  if (genres && genres.length > 0) {
-    filteredSongs = filteredSongs.filter(song => 
-      song.genres && song.genres.some(genre => genres.includes(genre))
-    );
+    if (['Happy', 'Energetic'].includes(detectedMood)) {
+      filteredTracks = filteredTracks.filter(track => track.popularity > 70);
+    } else if (['Sad', 'Calm'].includes(detectedMood)) {
+      filteredTracks = filteredTracks.filter(track => track.popularity > 60);
+    }
   }
 
   // Special keyword filtering
-  if (lowerPrompt.includes('title') || lowerPrompt.includes('hit')) {
-    filteredSongs = filteredSongs.filter(song => song.isTitle);
+  if (lowerPrompt.includes('popular') || lowerPrompt.includes('hit')) {
+    filteredTracks = filteredTracks.filter(track => track.popularity > 80);
   }
 
   // Sort by popularity and recent releases
-  filteredSongs.sort((a, b) => {
-    const aPopularity = a.stats?.spotify?.popularity || 0;
-    const bPopularity = b.stats?.spotify?.popularity || 0;
+  filteredTracks.sort((a, b) => {
+    const aPopularity = a.popularity || 0;
+    const bPopularity = b.popularity || 0;
     const aRecent = new Date(a.releaseDate).getTime();
     const bRecent = new Date(b.releaseDate).getTime();
     
     return (bPopularity * 0.7 + bRecent * 0.3) - (aPopularity * 0.7 + aRecent * 0.3);
   });
 
-  // Select top songs
-  const selectedSongs = filteredSongs.slice(0, count);
-  
-  // If not enough songs, fill with popular songs
-  if (selectedSongs.length < count) {
-    const remainingCount = count - selectedSongs.length;
-    const popularSongs = availableSongs
-      .filter(song => !selectedSongs.includes(song))
-      .sort((a, b) => (b.stats?.spotify?.totalStreams || 0) - (a.stats?.spotify?.totalStreams || 0))
-      .slice(0, remainingCount);
-    
-    selectedSongs.push(...popularSongs);
-  }
-
-  const duration = selectedSongs.reduce((sum, song) => sum + (song.duration || 0), 0);
+  // Select top tracks
+  const selectedTracks = filteredTracks.slice(0, count);
 
   return {
     name: `${detectedMood ? detectedMood + ' ' : ''}BTS Playlist`,
     description: `A curated playlist based on: "${prompt}"`,
-    songs: selectedSongs.map(song => song._id),
-    explanation: `Selected ${selectedSongs.length} songs that match your request for "${prompt}". ${detectedMood ? `Focused on ${detectedMood} mood.` : ''}`,
+    tracks: selectedTracks,
+    explanation: `Selected ${selectedTracks.length} songs that match your request for "${prompt}". ${detectedMood ? `Focused on ${detectedMood} mood.` : ''}`,
     tags: [detectedMood, ...genres].filter(Boolean),
     mood: detectedMood,
-    duration,
     confidence: 0.75
   };
 }

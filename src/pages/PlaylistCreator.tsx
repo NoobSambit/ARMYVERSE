@@ -1,48 +1,75 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Search, Music, X, Save, Shuffle } from 'lucide-react';
+import { Plus, Search, Music, X, Save, Shuffle, ExternalLink } from 'lucide-react';
 import SongCard from '../components/SongCard';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { api } from '../services/api';
 
 const PlaylistCreator = () => {
-  const [songs, setSongs] = useState<any[]>([]);
-  const [selectedSongs, setSelectedSongs] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [selectedSongs, setSelectedSongs] = useState<any[]>([]);
   const [playlistName, setPlaylistName] = useState('');
   const [playlistDescription, setPlaylistDescription] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
 
+  // Load trending tracks on component mount
   useEffect(() => {
-    const fetchSongs = async () => {
+    const fetchTrending = async () => {
       try {
-        const response = await api.get('/stats/songs?limit=100');
-        setSongs(response.data.songs || []);
+        setLoading(true);
+        const response = await api.get('/playlist/trending');
+        setSearchResults(response.data);
       } catch (error) {
-        console.error('Error fetching songs:', error);
+        console.error('Error fetching trending tracks:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchSongs();
+    fetchTrending();
   }, []);
 
-  const filteredSongs = songs.filter(song =>
-    song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    song.artist.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Search tracks when query changes
+  useEffect(() => {
+    const searchTracks = async () => {
+      if (!searchQuery.trim()) {
+        // Load trending when search is empty
+        try {
+          const response = await api.get('/playlist/trending');
+          setSearchResults(response.data);
+        } catch (error) {
+          console.error('Error fetching trending tracks:', error);
+        }
+        return;
+      }
+
+      try {
+        setSearchLoading(true);
+        const response = await api.get(`/playlist/search-tracks?q=${encodeURIComponent(searchQuery)}&limit=30`);
+        setSearchResults(response.data);
+      } catch (error) {
+        console.error('Error searching tracks:', error);
+      } finally {
+        setSearchLoading(false);
+      }
+    };
+
+    const debounceTimer = setTimeout(searchTracks, 500);
+    return () => clearTimeout(debounceTimer);
+  }, [searchQuery]);
 
   const handleSongSelect = (song: any) => {
-    if (selectedSongs.find(s => s._id === song._id)) {
-      setSelectedSongs(selectedSongs.filter(s => s._id !== song._id));
+    if (selectedSongs.find(s => s.id === song.id)) {
+      setSelectedSongs(selectedSongs.filter(s => s.id !== song.id));
     } else {
       setSelectedSongs([...selectedSongs, song]);
     }
   };
 
-  const handleSavePlaylist = async () => {
+  const handleCreatePlaylist = async () => {
     if (!playlistName.trim() || selectedSongs.length === 0) {
       alert('Please enter a playlist name and select at least one song.');
       return;
@@ -50,31 +77,38 @@ const PlaylistCreator = () => {
 
     setSaving(true);
     try {
-      const response = await api.post('/playlist/manual', {
+      const response = await api.post('/playlist/create-spotify', {
         name: playlistName,
         description: playlistDescription,
-        songIds: selectedSongs.map(song => song._id),
+        spotifyTrackIds: selectedSongs.map(song => song.id),
         tags: ['manual', 'custom'],
-        isPublic: true
+        type: 'manual'
       });
 
-      alert('Playlist created successfully!');
-      
-      // Reset form
-      setPlaylistName('');
-      setPlaylistDescription('');
-      setSelectedSongs([]);
+      if (response.data.success) {
+        alert(`✅ Playlist "${playlistName}" created successfully! Opening in Spotify...`);
+        
+        // Open Spotify playlist in new tab
+        if (response.data.playlist.spotifyUrl) {
+          window.open(response.data.playlist.spotifyUrl, '_blank');
+        }
+        
+        // Reset form
+        setPlaylistName('');
+        setPlaylistDescription('');
+        setSelectedSongs([]);
+      }
       
     } catch (error) {
       console.error('Error creating playlist:', error);
-      alert('Error creating playlist. Please try again.');
+      alert('❌ Error creating playlist. Please try again.');
     } finally {
       setSaving(false);
     }
   };
 
   const handleShuffleSelection = () => {
-    const shuffled = [...songs].sort(() => 0.5 - Math.random());
+    const shuffled = [...searchResults].sort(() => 0.5 - Math.random());
     setSelectedSongs(shuffled.slice(0, 10));
   };
 
@@ -92,7 +126,7 @@ const PlaylistCreator = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <LoadingSpinner size="lg" text="Loading songs..." />
+        <LoadingSpinner size="lg" text="Loading BTS tracks..." />
       </div>
     );
   }
@@ -109,7 +143,7 @@ const PlaylistCreator = () => {
           Create Playlist
         </h1>
         <p className="text-white/80 text-lg">
-          Curate your perfect BTS playlist
+          Search BTS tracks and create your perfect playlist on Spotify
         </p>
       </motion.div>
 
@@ -126,35 +160,55 @@ const PlaylistCreator = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/60 w-5 h-5" />
             <input
               type="text"
-              placeholder="Search songs..."
+              placeholder="Search BTS songs..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-white/10 backdrop-blur-lg border border-white/20 rounded-lg pl-10 pr-4 py-3 text-white placeholder-white/60 focus:outline-none focus:border-purple-500"
             />
+            {searchLoading && (
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <LoadingSpinner size="sm" />
+              </div>
+            )}
           </div>
 
-          {/* Songs Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[600px] overflow-y-auto">
-            {filteredSongs.map((song) => (
-              <motion.div
-                key={song._id}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => handleSongSelect(song)}
-                className={`cursor-pointer transition-all duration-200 ${
-                  selectedSongs.find(s => s._id === song._id)
-                    ? 'ring-2 ring-purple-500 ring-opacity-50'
-                    : ''
-                }`}
+          {/* Search Results */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-white font-medium">
+                {searchQuery ? `Search Results (${searchResults.length})` : `Trending BTS Tracks (${searchResults.length})`}
+              </h3>
+              <button
+                onClick={handleShuffleSelection}
+                className="text-purple-400 hover:text-purple-300 transition-colors flex items-center space-x-1 text-sm"
               >
-                <SongCard song={song} />
-                {selectedSongs.find(s => s._id === song._id) && (
-                  <div className="absolute top-2 right-2 bg-purple-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">
-                    ✓
-                  </div>
-                )}
-              </motion.div>
-            ))}
+                <Shuffle className="w-4 h-4" />
+                <span>Random 10</span>
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[600px] overflow-y-auto">
+              {searchResults.map((song) => (
+                <motion.div
+                  key={song.id}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleSongSelect(song)}
+                  className={`cursor-pointer transition-all duration-200 relative ${
+                    selectedSongs.find(s => s.id === song.id)
+                      ? 'ring-2 ring-purple-500 ring-opacity-50'
+                      : ''
+                  }`}
+                >
+                  <SongCard song={song} showSpotifyLink={false} />
+                  {selectedSongs.find(s => s.id === song.id) && (
+                    <div className="absolute top-2 right-2 bg-purple-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm z-10">
+                      ✓
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </div>
           </div>
         </motion.div>
 
@@ -209,27 +263,19 @@ const PlaylistCreator = () => {
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="mt-6 space-y-3">
+            {/* Create Button */}
+            <div className="mt-6">
               <button
-                onClick={handleShuffleSelection}
-                className="w-full bg-white/10 hover:bg-white/20 text-white px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
-              >
-                <Shuffle className="w-4 h-4" />
-                <span>Random Selection</span>
-              </button>
-              
-              <button
-                onClick={handleSavePlaylist}
+                onClick={handleCreatePlaylist}
                 disabled={saving || !playlistName.trim() || selectedSongs.length === 0}
-                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-500 disabled:to-gray-600 text-white px-4 py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center space-x-2"
+                className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:from-gray-500 disabled:to-gray-600 text-white px-4 py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center space-x-2"
               >
                 {saving ? (
                   <LoadingSpinner size="sm" />
                 ) : (
                   <>
-                    <Save className="w-4 h-4" />
-                    <span>Save Playlist</span>
+                    <ExternalLink className="w-4 h-4" />
+                    <span>Create on Spotify</span>
                   </>
                 )}
               </button>
@@ -243,7 +289,7 @@ const PlaylistCreator = () => {
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
               {selectedSongs.map((song, index) => (
                 <motion.div
-                  key={song._id}
+                  key={song.id}
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
@@ -251,7 +297,7 @@ const PlaylistCreator = () => {
                 >
                   <span className="text-white/60 text-sm w-6">{index + 1}</span>
                   <img
-                    src={song.thumbnail || song.album.cover}
+                    src={song.album.cover}
                     alt={song.title}
                     className="w-10 h-10 rounded object-cover"
                   />

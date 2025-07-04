@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 /**
- * Spotify API Service for fetching BTS data
+ * Enhanced Spotify API Service for BTS data and playlist management
  */
 class SpotifyService {
   constructor() {
@@ -58,8 +58,6 @@ class SpotifyService {
     try {
       const token = await this.getAccessToken();
       
-      console.log(`👥 Fetching BTS artist data (ID: ${artistId})...`);
-      
       const response = await axios.get(
         `https://api.spotify.com/v1/artists/${artistId}`,
         {
@@ -69,7 +67,6 @@ class SpotifyService {
         }
       );
 
-      console.log(`✅ Found artist: ${response.data.name} with ${response.data.followers.total.toLocaleString()} followers`);
       return response.data;
     } catch (error) {
       console.error('❌ Error fetching BTS artist data:', error.response?.data || error.message);
@@ -86,8 +83,6 @@ class SpotifyService {
       let allAlbums = [];
       let offset = 0;
       const limit = 50;
-
-      console.log('💿 Fetching BTS albums...');
 
       while (true) {
         const response = await axios.get(
@@ -112,16 +107,13 @@ class SpotifyService {
         }
         offset += limit;
         
-        // Add delay to respect rate limits
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-      // Filter out duplicates and sort by release date
       const uniqueAlbums = allAlbums.filter((album, index, self) => 
         index === self.findIndex(a => a.name === album.name)
       );
 
-      console.log(`✅ Found ${uniqueAlbums.length} unique albums`);
       return uniqueAlbums.sort((a, b) => new Date(b.release_date) - new Date(a.release_date));
     } catch (error) {
       console.error('❌ Error fetching BTS albums:', error.response?.data || error.message);
@@ -161,7 +153,6 @@ class SpotifyService {
         }
         offset += limit;
         
-        // Add delay to respect rate limits
         await new Promise(resolve => setTimeout(resolve, 50));
       }
 
@@ -222,13 +213,41 @@ class SpotifyService {
   }
 
   /**
+   * Search for tracks (used for live search)
+   */
+  async searchTracks(query, limit = 20) {
+    try {
+      const token = await this.getAccessToken();
+      
+      const response = await axios.get(
+        'https://api.spotify.com/v1/search',
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          params: {
+            q: `artist:BTS ${query}`,
+            type: 'track',
+            market: 'US',
+            limit
+          }
+        }
+      );
+
+      return response.data.tracks.items;
+    } catch (error) {
+      console.error(`❌ Error searching tracks:`, error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Get multiple tracks at once (batch request)
    */
   async getMultipleTracks(trackIds) {
     try {
       const token = await this.getAccessToken();
       
-      // Spotify allows up to 50 tracks per request
       const chunks = [];
       for (let i = 0; i < trackIds.length; i += 50) {
         chunks.push(trackIds.slice(i, i + 50));
@@ -252,13 +271,44 @@ class SpotifyService {
 
         allTracks.push(...response.data.tracks);
         
-        // Add delay between batch requests
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       return allTracks;
     } catch (error) {
       console.error('❌ Error fetching multiple tracks:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a playlist on Spotify (requires user authentication)
+   * Note: This would require OAuth flow for user authentication
+   */
+  async createPlaylist(userId, name, description, trackUris, isPublic = true) {
+    try {
+      // This would require user OAuth token, not client credentials
+      // For now, return a mock response
+      console.log('🎵 Creating Spotify playlist:', { name, description, trackCount: trackUris.length });
+      
+      // In a real implementation, you would:
+      // 1. Use user's OAuth token
+      // 2. Create playlist: POST https://api.spotify.com/v1/users/{user_id}/playlists
+      // 3. Add tracks: POST https://api.spotify.com/v1/playlists/{playlist_id}/tracks
+      
+      return {
+        id: 'mock_playlist_id',
+        external_urls: {
+          spotify: 'https://open.spotify.com/playlist/mock_playlist_id'
+        },
+        name,
+        description,
+        tracks: {
+          total: trackUris.length
+        }
+      };
+    } catch (error) {
+      console.error('❌ Error creating Spotify playlist:', error.response?.data || error.message);
       throw error;
     }
   }

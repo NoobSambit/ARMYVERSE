@@ -1,10 +1,11 @@
 import express from 'express';
 import Playlist from '../models/Playlist.js';
 import Song from '../models/Song.js';
+import SpotifyService from '../services/spotifyService.js';
 
 const router = express.Router();
 
-// GET /api/playlist - Get all playlists
+// GET /api/playlist - Get playlist history (for analytics)
 router.get('/', async (req, res) => {
   try {
     const { type, limit = 20, page = 1 } = req.query;
@@ -12,8 +13,6 @@ router.get('/', async (req, res) => {
     const filter = type ? { type } : {};
     
     const playlists = await Playlist.find(filter)
-      .populate('songs', 'title artist duration')
-      .populate('createdBy', 'username')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit)
@@ -32,97 +31,145 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/playlist/:id - Get specific playlist
-router.get('/:id', async (req, res) => {
+// POST /api/playlist/create-spotify - Create playlist and export to Spotify
+router.post('/create-spotify', async (req, res) => {
   try {
-    const playlist = await Playlist.findById(req.params.id)
-      .populate('songs', 'title artist duration stats thumbnail album')
-      .populate('createdBy', 'username favoriteBias')
-      .exec();
+    const { name, description, spotifyTrackIds, tags, mood, type = 'manual', aiPrompt, aiExplanation } = req.body;
 
-    if (!playlist) {
-      return res.status(404).json({ error: 'Playlist not found' });
+    if (!name || !spotifyTrackIds || spotifyTrackIds.length === 0) {
+      return res.status(400).json({ error: 'Name and track IDs are required' });
     }
 
-    res.json(playlist);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+    const spotifyService = new SpotifyService();
 
-// POST /api/playlist/manual - Save a manual playlist
-router.post('/manual', async (req, res) => {
-  try {
-    const { name, description, songIds, tags, mood, isPublic = true } = req.body;
+    // Get track details for validation
+    const tracks = await spotifyService.getMultipleTracks(spotifyTrackIds);
+    const validTrackIds = tracks.filter(track => track).map(track => track.id);
 
-    // Validate songs exist
-    const songs = await Song.find({ _id: { $in: songIds } });
-    if (songs.length !== songIds.length) {
-      return res.status(400).json({ error: 'Some songs not found' });
+    if (validTrackIds.length === 0) {
+      return res.status(400).json({ error: 'No valid tracks found' });
     }
 
-    // Calculate total duration
-    const duration = songs.reduce((sum, song) => sum + (song.duration || 0), 0);
+    // Create track URIs for Spotify
+    const trackUris = validTrackIds.map(id => `spotify:track:${id}`);
 
-    const playlist = new Playlist({
+    // For demo purposes, we'll simulate playlist creation
+    // In production, this would require user OAuth
+    const mockPlaylist = await spotifyService.createPlaylist(
+      'user_id', // Would be actual user ID
       name,
       description,
-      type: 'manual',
-      songs: songIds,
-      tags,
+      trackUris,
+      true
+    );
+
+    // Save playlist record for analytics
+    const playlistRecord = new Playlist({
+      name,
+      description,
+      type,
+      spotifyPlaylistId: mockPlaylist.id,
+      spotifyPlaylistUrl: mockPlaylist.external_urls.spotify,
+      songSpotifyIds: validTrackIds,
+      aiPrompt: aiPrompt || '',
+      aiExplanation: aiExplanation || '',
+      tags: tags || [],
       mood,
-      isPublic,
-      duration
+      exported: true,
+      exportedAt: new Date()
     });
 
-    await playlist.save();
-    
-    // Populate the playlist before returning
-    const populatedPlaylist = await Playlist.findById(playlist._id)
-      .populate('songs', 'title artist duration thumbnail')
-      .exec();
+    await playlistRecord.save();
 
-    res.status(201).json(populatedPlaylist);
+    res.json({
+      success: true,
+      playlist: {
+        id: playlistRecord._id,
+        name: playlistRecord.name,
+        description: playlistRecord.description,
+        spotifyUrl: mockPlaylist.external_urls.spotify,
+        trackCount: validTrackIds.length,
+        exported: true
+      },
+      spotifyPlaylist: mockPlaylist
+    });
+
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error creating Spotify playlist:', error);
+    res.status(500).json({ error: 'Failed to create playlist' });
   }
 });
 
-// PUT /api/playlist/:id - Update playlist
-router.put('/:id', async (req, res) => {
+// GET /api/playlist/search-tracks - Search for BTS tracks on Spotify
+router.get('/search-tracks', async (req, res) => {
   try {
-    const { name, description, songIds, tags, mood, isPublic } = req.body;
+    const { q, limit = 20 } = req.query;
 
-    const playlist = await Playlist.findById(req.params.id);
-    if (!playlist) {
-      return res.status(404).json({ error: 'Playlist not found' });
+    if (!q) {
+      return res.status(400).json({ error: 'Search query is required' });
     }
 
-    // Update fields if provided
-    if (name) playlist.name = name;
-    if (description !== undefined) playlist.description = description;
-    if (songIds) {
-      const songs = await Song.find({ _id: { $in: songIds } });
-      playlist.songs = songIds;
-      playlist.duration = songs.reduce((sum, song) => sum + (song.duration || 0), 0);
-    }
-    if (tags) playlist.tags = tags;
-    if (mood) playlist.mood = mood;
-    if (isPublic !== undefined) playlist.isPublic = isPublic;
+    const spotifyService = new SpotifyService();
+    const tracks = await spotifyService.searchTracks(q, limit);
 
-    await playlist.save();
+    // Format tracks for frontend
+    const formattedTracks = tracks.map(track => ({
+      id: track.id,
+      title: track.name,
+      artist: track.artists.map(a => a.name).join(', '),
+      album: {
+        title: track.album.name,
+        cover: track.album.images[0]?.url || ''
+      },
+      duration: Math.round(track.duration_ms / 1000),
+      spotifyUrl: track.external_urls.spotify,
+      uri: track.uri,
+      popularity: track.popularity,
+      releaseDate: track.album.release_date
+    }));
 
-    const populatedPlaylist = await Playlist.findById(playlist._id)
-      .populate('songs', 'title artist duration thumbnail')
-      .exec();
-
-    res.json(populatedPlaylist);
+    res.json(formattedTracks);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error searching tracks:', error);
+    res.status(500).json({ error: 'Failed to search tracks' });
   }
 });
 
-// DELETE /api/playlist/:id - Delete playlist
+// GET /api/playlist/trending - Get trending BTS tracks from Spotify
+router.get('/trending', async (req, res) => {
+  try {
+    const spotifyService = new SpotifyService();
+    
+    // Search for popular BTS tracks
+    const tracks = await spotifyService.searchTracks('', 50);
+    
+    // Sort by popularity and return top tracks
+    const trending = tracks
+      .sort((a, b) => b.popularity - a.popularity)
+      .slice(0, 20)
+      .map(track => ({
+        id: track.id,
+        title: track.name,
+        artist: track.artists.map(a => a.name).join(', '),
+        album: {
+          title: track.album.name,
+          cover: track.album.images[0]?.url || ''
+        },
+        duration: Math.round(track.duration_ms / 1000),
+        spotifyUrl: track.external_urls.spotify,
+        uri: track.uri,
+        popularity: track.popularity,
+        releaseDate: track.album.release_date
+      }));
+
+    res.json(trending);
+  } catch (error) {
+    console.error('Error fetching trending tracks:', error);
+    res.status(500).json({ error: 'Failed to fetch trending tracks' });
+  }
+});
+
+// DELETE /api/playlist/:id - Delete playlist record
 router.delete('/:id', async (req, res) => {
   try {
     const playlist = await Playlist.findByIdAndDelete(req.params.id);
@@ -130,7 +177,7 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Playlist not found' });
     }
 
-    res.json({ message: 'Playlist deleted successfully' });
+    res.json({ message: 'Playlist record deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
