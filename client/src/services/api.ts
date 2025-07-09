@@ -4,7 +4,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000, // Increased timeout for sync operations
+  timeout: 300000, // 5 minutes timeout for long-running operations like Spotify sync
   headers: {
     'Content-Type': 'application/json',
   },
