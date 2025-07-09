@@ -63,36 +63,36 @@ const SongCard: React.FC<SongCardProps> = ({ song, onClick, showSpotifyLink = tr
       whileHover={{ scale: 1.02, y: -4 }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className="bg-white/10 backdrop-blur-lg rounded-xl p-6 cursor-pointer border border-white/20 hover:border-white/40 transition-all duration-300 group"
+      className="bg-white/10 backdrop-blur-lg rounded-xl p-4 cursor-pointer border border-white/20 hover:border-white/40 transition-all duration-300 group"
     >
-      <div className="flex items-start space-x-4 mb-4">
+      <div className="flex items-start space-x-3 mb-3">
         {/* Thumbnail */}
         <div className="relative">
           <img
             src={song.thumbnail || song.album.cover}
             alt={song.title}
-            className="w-16 h-16 rounded-lg object-cover"
+            className="w-12 h-12 rounded-lg object-cover"
           />
           <motion.div
             initial={{ opacity: 0 }}
             whileHover={{ opacity: 1 }}
             className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center"
           >
-            <Play className="w-6 h-6 text-white" />
+            <Play className="w-4 h-4 text-white" />
           </motion.div>
         </div>
 
         {/* Song Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-2 mb-1">
-            <h3 className="font-bold text-white truncate">{song.title}</h3>
+            <h3 className="font-semibold text-white truncate text-sm">{song.title}</h3>
             {song.isTitle && (
-              <span className="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full border border-yellow-500/30">
+              <span className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-300 text-xs rounded-full border border-yellow-500/30">
                 Title
               </span>
             )}
           </div>
-          <p className="text-white/70 text-sm">{song.artist}</p>
+          <p className="text-white/70 text-xs">{song.artist}</p>
           <p className="text-white/60 text-xs">{song.album.title}</p>
           
           {/* Duration */}
@@ -135,21 +135,21 @@ const SongCard: React.FC<SongCardProps> = ({ song, onClick, showSpotifyLink = tr
       </div>
 
       {/* Spotify Stats Section */}
-      <div className="mb-4 p-4 bg-green-500/10 rounded-lg border border-green-500/20">
-        <div className="flex items-center space-x-2 mb-3">
-          <Music2 className="w-5 h-5 text-green-400" />
-          <span className="text-green-300 font-medium">Spotify</span>
-          <span className="ml-auto text-green-300 text-sm">
+      <div className="mb-3 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+        <div className="flex items-center space-x-2 mb-2">
+          <Music2 className="w-4 h-4 text-green-400" />
+          <span className="text-green-300 font-medium text-sm">Spotify</span>
+          <span className="ml-auto text-green-300 text-xs">
             {popularity}/100
           </span>
         </div>
         
         {stats ? (
-          <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="grid grid-cols-2 gap-2 text-xs">
             {stats.totalStreams && (
               <div>
-                <span className="text-white/60 text-xs">Total Streams</span>
-                <div className="text-white font-medium">
+                <span className="text-white/60 text-xs">Total</span>
+                <div className="text-white font-medium text-sm">
                   {formatNumber(stats.totalStreams)}
                 </div>
               </div>
@@ -157,7 +157,7 @@ const SongCard: React.FC<SongCardProps> = ({ song, onClick, showSpotifyLink = tr
             {stats.monthlyStreams && (
               <div>
                 <span className="text-white/60 text-xs">Monthly</span>
-                <div className="text-white font-medium">
+                <div className="text-white font-medium text-sm">
                   {formatNumber(stats.monthlyStreams)}
                 </div>
               </div>
@@ -165,21 +165,21 @@ const SongCard: React.FC<SongCardProps> = ({ song, onClick, showSpotifyLink = tr
             {stats.dailyStreams && (
               <div>
                 <span className="text-white/60 text-xs">Daily</span>
-                <div className="text-white font-medium">
+                <div className="text-white font-medium text-sm">
                   {formatNumber(stats.dailyStreams)}
                 </div>
               </div>
             )}
             <div>
-              <span className="text-white/60 text-xs">Popularity</span>
-              <div className="text-white font-medium">
+              <span className="text-white/60 text-xs">Score</span>
+              <div className="text-white font-medium text-sm">
                 {popularity}%
               </div>
             </div>
           </div>
         ) : (
-          <div className="text-center py-2">
-            <div className="text-white font-medium text-lg">{popularity}%</div>
+          <div className="text-center py-1">
+            <div className="text-white font-medium text-sm">{popularity}%</div>
             <span className="text-white/60 text-xs">Popularity Score</span>
           </div>
         )}
@@ -188,20 +188,20 @@ const SongCard: React.FC<SongCardProps> = ({ song, onClick, showSpotifyLink = tr
       {/* Mood and Badges */}
       <div className="flex items-center justify-between">
         {song.mood && (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 border border-purple-500/30">
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 border border-purple-500/30">
             {song.mood}
           </span>
         )}
         
         {/* Platform Badges */}
-        <div className="flex space-x-1">
+        <div className="flex space-x-1 flex-wrap">
           {popularity > 80 && (
-            <span className="px-2 py-1 bg-green-500/20 text-green-300 text-xs rounded-full">
+            <span className="px-1.5 py-0.5 bg-green-500/20 text-green-300 text-xs rounded-full border border-green-500/30">
               🔥 Hot on Spotify
             </span>
           )}
           {stats?.totalStreams && stats.totalStreams > 1000000000 && (
-            <span className="px-2 py-1 bg-green-500/20 text-green-300 text-xs rounded-full">
+            <span className="px-1.5 py-0.5 bg-green-500/20 text-green-300 text-xs rounded-full border border-green-500/30">
               🎵 1B+ Streams
             </span>
           )}

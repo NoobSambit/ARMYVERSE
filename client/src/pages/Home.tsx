@@ -129,7 +129,7 @@ const Home = () => {
           </Link>
           <Link
             to="/ai-playlist"
-            className="bg-white/10 backdrop-blur-lg text-white px-8 py-3 rounded-lg font-semibold border border-white/20 hover:bg-white/20 transition-all duration-300 flex items-center space-x-2"
+            className="bg-white/10 backdrop-blur-lg text-white px-6 py-2.5 rounded-lg font-medium border border-white/20 hover:bg-white/20 transition-all duration-300 flex items-center space-x-2"
           >
             <Music className="w-5 h-5" />
             <span>Create AI Playlist</span>
@@ -137,14 +137,14 @@ const Home = () => {
           <button
             onClick={handleRefreshData}
             disabled={syncing}
-            className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:from-gray-500 disabled:to-gray-600 text-white px-8 py-3 rounded-lg font-semibold transition-all duration-300 flex items-center space-x-2"
+            className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:from-gray-500 disabled:to-gray-600 text-white px-4 py-2.5 rounded-lg font-medium transition-all duration-300 flex items-center space-x-2 text-sm"
           >
             {syncing ? (
               <LoadingSpinner size="sm" />
             ) : (
-              <RefreshCw className="w-5 h-5" />
+              <RefreshCw className="w-4 h-4" />
             )}
-            <span>{syncing ? 'Refreshing...' : 'Refresh Spotify Data'}</span>
+            <span>{syncing ? 'Syncing...' : 'Sync Data'}</span>
           </button>
         </motion.div>
       </motion.section>
@@ -154,7 +154,7 @@ const Home = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, delay: 0.2 }}
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
       >
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
@@ -165,22 +165,22 @@ const Home = () => {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
               whileHover={{ scale: 1.05 }}
-              className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 hover:border-white/40 transition-all duration-300"
+              className="bg-white/10 backdrop-blur-lg rounded-xl p-5 border border-white/20 hover:border-white/40 transition-all duration-300"
             >
               <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-lg bg-gradient-to-r ${stat.color}`}>
-                  <Icon className="w-6 h-6 text-white" />
+                <div className={`p-2.5 rounded-lg bg-gradient-to-r ${stat.color}`}>
+                  <Icon className="w-5 h-5 text-white" />
                 </div>
                 <div className="text-right">
-                  <span className="text-white/60 text-sm">{stat.title}</span>
+                  <span className="text-white/60 text-xs font-medium">{stat.title}</span>
                   {stat.platform && (
-                    <div className="text-xs px-2 py-1 rounded-full mt-1 bg-green-500/20 text-green-300">
+                    <div className="text-xs px-2 py-0.5 rounded-full mt-1 bg-green-500/20 text-green-300 border border-green-500/30">
                       🎵 Spotify
                     </div>
                   )}
                 </div>
               </div>
-              <div className="text-3xl font-bold text-white">
+              <div className="text-2xl font-bold text-white">
                 {formatNumber(stat.value)}
               </div>
             </motion.div>
@@ -194,35 +194,35 @@ const Home = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.3 }}
-          className="bg-green-500/10 backdrop-blur-lg rounded-xl p-6 border border-green-500/20"
+          className="bg-green-500/10 backdrop-blur-lg rounded-xl p-5 border border-green-500/20"
         >
           <div className="flex items-center space-x-3 mb-4">
-            <div className="bg-green-500 p-3 rounded-lg">
-              <Music2 className="w-6 h-6 text-white" />
+            <div className="bg-green-500 p-2.5 rounded-lg">
+              <Music2 className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-white">Spotify Analytics</h3>
-              <p className="text-green-300">Streaming Performance Overview</p>
+              <h3 className="text-lg font-bold text-white">Spotify Analytics</h3>
+              <p className="text-green-300 text-sm">Streaming Performance Overview</p>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-green-500/10 rounded-lg">
-              <div className="text-2xl font-bold text-green-300">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="text-center p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+              <div className="text-xl font-bold text-green-300">
                 {formatNumber(stats.summary.totalStreams)}
               </div>
-              <div className="text-white/70 text-sm">Total Streams</div>
+              <div className="text-white/70 text-xs">Total Streams</div>
             </div>
-            <div className="text-center p-4 bg-green-500/10 rounded-lg">
-              <div className="text-2xl font-bold text-green-300">
+            <div className="text-center p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+              <div className="text-xl font-bold text-green-300">
                 {formatNumber(stats.summary.averageStreamsPerSong)}
               </div>
-              <div className="text-white/70 text-sm">Avg per Song</div>
+              <div className="text-white/70 text-xs">Avg per Song</div>
             </div>
-            <div className="text-center p-4 bg-green-500/10 rounded-lg">
-              <div className="text-2xl font-bold text-green-300">
+            <div className="text-center p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+              <div className="text-xl font-bold text-green-300">
                 {stats.summary.totalSongs}
               </div>
-              <div className="text-white/70 text-sm">Total Songs</div>
+              <div className="text-white/70 text-xs">Total Songs</div>
             </div>
           </div>
         </motion.section>
@@ -237,17 +237,17 @@ const Home = () => {
           className="space-y-6"
         >
           <div className="flex items-center justify-between">
-            <h2 className="text-3xl font-bold text-white">🔥 Trending Now</h2>
+            <h2 className="text-2xl font-bold text-white">🔥 Trending Now</h2>
             <Link
               to="/stats"
-              className="text-purple-400 hover:text-purple-300 transition-colors flex items-center space-x-2"
+              className="text-purple-400 hover:text-purple-300 transition-colors flex items-center space-x-1 text-sm font-medium"
             >
               <span>View All</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {trending.slice(0, 6).map((song, index) => (
               <motion.div
                 key={song._id}
@@ -269,32 +269,32 @@ const Home = () => {
         transition={{ duration: 0.8, delay: 0.6 }}
         className="grid grid-cols-1 md:grid-cols-3 gap-8"
       >
-        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 border border-white/20 text-center">
-          <div className="bg-gradient-to-r from-green-500 to-emerald-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Music2 className="w-8 h-8 text-white" />
+        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 text-center">
+          <div className="bg-gradient-to-r from-green-500 to-emerald-500 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Music2 className="w-6 h-6 text-white" />
           </div>
-          <h3 className="text-xl font-bold text-white mb-2">Spotify Integration</h3>
-          <p className="text-white/70">
+          <h3 className="text-lg font-bold text-white mb-2">Spotify Integration</h3>
+          <p className="text-white/70 text-sm">
             Real-time streaming data, popularity scores, and detailed analytics from Spotify's official API.
           </p>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 border border-white/20 text-center">
-          <div className="bg-gradient-to-r from-purple-500 to-indigo-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <TrendingUp className="w-8 h-8 text-white" />
+        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 text-center">
+          <div className="bg-gradient-to-r from-purple-500 to-indigo-500 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+            <TrendingUp className="w-6 h-6 text-white" />
           </div>
-          <h3 className="text-xl font-bold text-white mb-2">Live Data Sync</h3>
-          <p className="text-white/70">
+          <h3 className="text-lg font-bold text-white mb-2">Live Data Sync</h3>
+          <p className="text-white/70 text-sm">
             Automatically fetch and update the latest streaming statistics from Spotify.
           </p>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 border border-white/20 text-center">
-          <div className="bg-gradient-to-r from-pink-500 to-rose-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Music className="w-8 h-8 text-white" />
+        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 text-center">
+          <div className="bg-gradient-to-r from-pink-500 to-rose-500 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Music className="w-6 h-6 text-white" />
           </div>
-          <h3 className="text-xl font-bold text-white mb-2">AI Playlists</h3>
-          <p className="text-white/70">
+          <h3 className="text-lg font-bold text-white mb-2">AI Playlists</h3>
+          <p className="text-white/70 text-sm">
             Create personalized BTS playlists using AI and export them directly to your Spotify account.
           </p>
         </div>
