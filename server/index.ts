@@ -2,15 +2,11 @@ import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 
-// Load environment variables FIRST, before any other imports that might use them
+// Load environment variables FIRST
 dotenv.config();
-import dotenv from 'dotenv';
 
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-
-// Load environment variables
-dotenv.config();
 
 const app = express();
 app.use(cors());
@@ -58,11 +54,11 @@ app.use((req, res, next) => {
     process.exit(1);
   }
 
-  console.log('Environment variables loaded successfully');
-  console.log('MongoDB URI:', process.env.MONGO_URI ? 'Configured' : 'Missing');
-  console.log('Spotify Client ID:', process.env.SPOTIFY_CLIENT_ID ? 'Configured' : 'Missing');
-  console.log('YouTube API Key:', process.env.YOUTUBE_API_KEY ? 'Configured' : 'Missing');
-  console.log('Gemini API Key:', process.env.GEMINI_API_KEY ? 'Configured' : 'Missing');
+  console.log('🔧 Environment variables loaded successfully');
+  console.log('🗄️  MongoDB URI:', process.env.MONGO_URI ? 'Configured' : 'Missing');
+  console.log('🎵 Spotify Client ID:', process.env.SPOTIFY_CLIENT_ID ? 'Configured' : 'Missing');
+  console.log('📺 YouTube API Key:', process.env.YOUTUBE_API_KEY ? 'Configured' : 'Missing');
+  console.log('🤖 Gemini API Key:', process.env.GEMINI_API_KEY ? 'Configured' : 'Missing');
 
   const server = await registerRoutes(app);
 
@@ -70,7 +66,7 @@ app.use((req, res, next) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
-    console.error('Error:', err);
+    console.error('❌ Error:', err);
     res.status(status).json({ message });
   });
 
