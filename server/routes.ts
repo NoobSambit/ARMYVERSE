@@ -5,8 +5,6 @@ import { MongoClient } from "mongodb";
 import SpotifyWebApi from "spotify-web-api-node";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Initialize MongoDB connection
-const mongoUri = process.env.MONGO_URI;
 let mongoClient: MongoClient | null = null;
 
 // Initialize Spotify API
@@ -20,8 +18,14 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 // Helper function to get MongoDB connection
 async function getMongoDb() {
+  const mongoUri = process.env.MONGO_URI;
+  
+  if (!mongoUri || typeof mongoUri !== 'string' || mongoUri.trim() === '') {
+    throw new Error('MONGO_URI environment variable is not set or is empty');
+  }
+  
   if (!mongoClient) {
-    mongoClient = new MongoClient(mongoUri!);
+    mongoClient = new MongoClient(mongoUri);
     await mongoClient.connect();
     console.log('Connected to MongoDB');
   }
