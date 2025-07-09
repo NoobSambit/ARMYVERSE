@@ -1,11 +1,12 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+
+// Load environment variables FIRST, before any other imports that might use them
+dotenv.config();
+
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-
-// Load environment variables
-dotenv.config();
 
 const app = express();
 app.use(cors());
