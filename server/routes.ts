@@ -387,7 +387,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(cachedData);
       }
       
-      await getSpotifyToken();
+      const tokenSuccess = await getSpotifyToken();
+      if (!tokenSuccess) {
+        console.error('Failed to obtain Spotify token');
+        // Fallback to database if Spotify token fails
+        try {
+          const db = await getMongoDb();
+          const collection = db.collection('songs');
+          const fallbackTracks = await collection.aggregate([
+            {
+              $match: {
+                spotifyId: { $exists: true, $ne: null, $ne: "" }
+              }
+            },
+            {
+              $group: {
+                _id: "$spotifyId",
+                song: { $first: "$$ROOT" }
+              }
+            },
+            {
+              $replaceRoot: { newRoot: "$song" }
+            },
+            {
+              $limit: 30
+            }
+          ]).toArray();
+          return res.json(fallbackTracks);
+        } catch (dbError) {
+          return res.status(500).json({ error: 'Failed to fetch trending tracks and database fallback failed' });
+        }
+      }
+      
       await rateLimitSpotify();
       
       // Search for BTS tracks
@@ -439,7 +470,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(cachedData);
       }
       
-      await getSpotifyToken();
+      const tokenSuccess = await getSpotifyToken();
+      if (!tokenSuccess) {
+        console.error('Failed to obtain Spotify token');
+        // Fallback to database search if Spotify token fails
+        try {
+          const db = await getMongoDb();
+          const collection = db.collection('songs');
+          const searchQuery = req.query.q as string;
+          const fallbackTracks = await collection.aggregate([
+            {
+              $match: {
+                spotifyId: { $exists: true, $ne: null, $ne: "" },
+                $or: [
+                  { title: { $regex: searchQuery, $options: 'i' } },
+                  { artist: { $regex: searchQuery, $options: 'i' } }
+                ]
+              }
+            },
+            {
+              $group: {
+                _id: "$spotifyId",
+                song: { $first: "$$ROOT" }
+              }
+            },
+            {
+              $replaceRoot: { newRoot: "$song" }
+            },
+            {
+              $limit: parseInt(req.query.limit as string || '30')
+            }
+          ]).toArray();
+          return res.json(fallbackTracks);
+        } catch (dbError) {
+          return res.status(500).json({ error: 'Failed to search tracks and database fallback failed' });
+        }
+      }
+      
       await rateLimitSpotify();
       
       const searchResults = await spotifyApi.searchTracks(`${q} BTS`, { 
@@ -491,7 +558,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { name, description, spotifyTrackIds } = req.body;
       
-      await getSpotifyToken();
+      const tokenSuccess = await getSpotifyToken();
+      if (!tokenSuccess) {
+        return res.status(500).json({ error: 'Failed to authenticate with Spotify. Cannot create playlist.' });
+      }
       
       // For now, just return success without actually creating playlist
       // (would need user authentication for actual playlist creation)
@@ -632,7 +702,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('Starting comprehensive BTS data sync...');
       
-      await getSpotifyToken();
+      const tokenSuccess = await getSpotifyToken();
+      if (!tokenSuccess) {
+        return res.status(500).json({ error: 'Failed to authenticate with Spotify. Cannot sync data.' });
+      }
+      
       const db = await getMongoDb();
       const collection = db.collection('songs');
       const albumCollection = db.collection('albums');
