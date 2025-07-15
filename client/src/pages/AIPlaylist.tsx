@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Send, Music, Lightbulb, Wand2, RefreshCw, ExternalLink } from 'lucide-react';
+import { Sparkles, Send, Music, Lightbulb, Wand2, RefreshCw, ExternalLink, CheckCircle } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import SongCard from '../components/SongCard';
 import { api } from '../services/api';
@@ -9,6 +9,9 @@ const AIPlaylist = () => {
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [spotifyConnected, setSpotifyConnected] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [creatingSpotifyPlaylist, setCreatingSpotifyPlaylist] = useState(false);
 
   const promptSuggestions = [
     "Create a upbeat BTS playlist for working out",
@@ -20,6 +23,71 @@ const AIPlaylist = () => {
     "Create a motivational BTS playlist for overcoming challenges",
     "I need BTS songs that make me feel confident"
   ];
+
+  // Check for OAuth callback parameters and session
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionParam = urlParams.get('session');
+    const connected = urlParams.get('connected');
+    const error = urlParams.get('error');
+
+    if (error) {
+      alert('❌ Spotify connection failed. Please try again.');
+      return;
+    }
+
+    if (sessionParam && connected) {
+      setSessionId(sessionParam);
+      setSpotifyConnected(true);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      alert('✅ Successfully connected to Spotify!');
+    }
+  }, []);
+
+  const handleConnectSpotify = () => {
+    window.location.href = '/auth/spotify';
+  };
+
+  const handleCreateSpotifyPlaylist = async () => {
+    if (!sessionId || !result) return;
+
+    setCreatingSpotifyPlaylist(true);
+    try {
+      const response = await api.post('/playlist/create-spotify', {
+        name: result.playlist.name,
+        description: result.playlist.description,
+        songs: result.playlist.songs,
+        sessionId: sessionId
+      });
+
+      if (response.data.success) {
+        // Update result with real Spotify playlist URL
+        setResult(prev => ({
+          ...prev,
+          playlist: {
+            ...prev.playlist,
+            spotifyUrl: response.data.playlist.spotifyUrl,
+            realPlaylist: true,
+            tracksAdded: response.data.playlist.tracksAdded,
+            totalSongs: response.data.playlist.totalSongs
+          }
+        }));
+        alert(`✅ Created Spotify playlist with ${response.data.playlist.tracksAdded}/${response.data.playlist.totalSongs} tracks!`);
+      }
+    } catch (error) {
+      console.error('Error creating Spotify playlist:', error);
+      if (error.response?.status === 401) {
+        setSpotifyConnected(false);
+        setSessionId(null);
+        alert('❌ Spotify session expired. Please reconnect to Spotify.');
+      } else {
+        alert('❌ Failed to create Spotify playlist. Please try again.');
+      }
+    } finally {
+      setCreatingSpotifyPlaylist(false);
+    }
+  };
 
   const handleGeneratePlaylist = async () => {
     if (!prompt.trim()) {
@@ -183,13 +251,40 @@ const AIPlaylist = () => {
                 <h2 className="text-2xl font-bold text-white">{result.playlist.name}</h2>
                 <p className="text-white/70">{result.playlist.description}</p>
               </div>
-              <button
-                onClick={handleOpenSpotify}
-                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
-              >
-                <ExternalLink className="w-4 h-4" />
-                <span>Open in Spotify</span>
-              </button>
+              <div className="flex flex-col space-y-2">
+                {!spotifyConnected && (
+                  <button
+                    onClick={handleConnectSpotify}
+                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                  >
+                    <Music className="w-4 h-4" />
+                    <span>Connect Spotify</span>
+                  </button>
+                )}
+                {spotifyConnected && !result.playlist.realPlaylist && (
+                  <button
+                    onClick={handleCreateSpotifyPlaylist}
+                    disabled={creatingSpotifyPlaylist}
+                    className="bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                  >
+                    {creatingSpotifyPlaylist ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Music className="w-4 h-4" />
+                    )}
+                    <span>{creatingSpotifyPlaylist ? 'Creating...' : 'Create Playlist'}</span>
+                  </button>
+                )}
+                {result.playlist.realPlaylist && (
+                  <button
+                    onClick={handleOpenSpotify}
+                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    <span>Open Playlist</span>
+                  </button>
+                )}
+              </div>
             </div>
             
             {/* Playlist Stats */}
@@ -199,7 +294,18 @@ const AIPlaylist = () => {
                 <span>{result.playlist.songs.length} songs</span>
               </div>
               <div className="flex items-center space-x-1">
-                <span>✅ Exported to Spotify</span>
+                {spotifyConnected ? (
+                  result.playlist.realPlaylist ? (
+                    <span className="flex items-center space-x-1">
+                      <CheckCircle className="w-4 h-4 text-green-400" />
+                      <span>✅ Real Spotify Playlist ({result.playlist.tracksAdded}/{result.playlist.totalSongs} tracks)</span>
+                    </span>
+                  ) : (
+                    <span>🎵 Ready to create real playlist</span>
+                  )
+                ) : (
+                  <span>🔗 Connect Spotify to create real playlist</span>
+                )}
               </div>
             </div>
 

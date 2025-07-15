@@ -9,6 +9,7 @@ import playlistRoutes from './routes/playlist.js';
 const spotifyApi = new SpotifyWebApi({
   clientId: process.env.SPOTIFY_CLIENT_ID,
   clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
+  redirectUri: process.env.SPOTIFY_REDIRECT_URI || 'http://localhost:5000/auth/spotify/callback'
 });
 
 // Initialize Gemini AI
@@ -124,7 +125,64 @@ const sampleBTSData = [
   }
 ];
 
+// Store user sessions and tokens
+const userSessions = new Map<string, { accessToken: string, refreshToken: string, userId: string }>();
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Spotify OAuth routes
+  app.get('/auth/spotify', (req, res) => {
+    const scopes = ['playlist-modify-private', 'playlist-modify-public', 'user-read-private'];
+    const state = Math.random().toString(36).substring(2);
+    const authorizeURL = spotifyApi.createAuthorizeURL(scopes, state);
+    res.redirect(authorizeURL);
+  });
+
+  app.get('/auth/spotify/callback', async (req, res) => {
+    const { code, error } = req.query;
+    
+    if (error) {
+      return res.redirect('/ai-playlist?error=access_denied');
+    }
+
+    try {
+      const data = await spotifyApi.authorizationCodeGrant(code as string);
+      const { access_token, refresh_token } = data.body;
+      
+      // Set tokens for this session
+      spotifyApi.setAccessToken(access_token);
+      spotifyApi.setRefreshToken(refresh_token);
+      
+      // Get user info
+      const userData = await spotifyApi.getMe();
+      const userId = userData.body.id;
+      
+      // Generate session ID and store user data
+      const sessionId = Math.random().toString(36).substring(2);
+      userSessions.set(sessionId, {
+        accessToken: access_token,
+        refreshToken: refresh_token,
+        userId: userId
+      });
+      
+      // Redirect with session ID
+      res.redirect(`/ai-playlist?session=${sessionId}&connected=true`);
+    } catch (error) {
+      console.error('Error in Spotify callback:', error);
+      res.redirect('/ai-playlist?error=auth_failed');
+    }
+  });
+
+  app.get('/api/spotify/status/:sessionId', (req, res) => {
+    const { sessionId } = req.params;
+    const session = userSessions.get(sessionId);
+    
+    if (session) {
+      res.json({ connected: true, userId: session.userId });
+    } else {
+      res.json({ connected: false });
+    }
+  });
+
   // Register playlist routes
   app.use('/api', playlistRoutes);
 
@@ -347,29 +405,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/playlist/create-spotify', async (req, res) => {
     try {
-      const { name, description, spotifyTrackIds } = req.body;
+      const { name, description, songs, sessionId } = req.body;
       
-      const tokenSuccess = await getSpotifyToken();
-      if (!tokenSuccess) {
-        return res.status(500).json({ error: 'Failed to authenticate with Spotify. Cannot create playlist.' });
+      // Check if user is authenticated
+      const session = userSessions.get(sessionId);
+      if (!session) {
+        return res.status(401).json({ error: 'User not authenticated. Please connect to Spotify first.' });
       }
       
-      // Note: Creating actual Spotify playlists requires user authentication (OAuth)
-      // For now, return a search URL that opens Spotify with the playlist name
-      const searchQuery = encodeURIComponent(`${name} BTS`);
-      const spotifySearchUrl = `https://open.spotify.com/search/${searchQuery}`;
+      // Create a new SpotifyWebApi instance for this user
+      const userSpotifyApi = new SpotifyWebApi({
+        clientId: process.env.SPOTIFY_CLIENT_ID,
+        clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
+        redirectUri: process.env.SPOTIFY_REDIRECT_URI
+      });
+      
+      userSpotifyApi.setAccessToken(session.accessToken);
+      userSpotifyApi.setRefreshToken(session.refreshToken);
+      
+      // Create the playlist
+      const playlistData = await userSpotifyApi.createPlaylist(session.userId, name, {
+        description: description,
+        public: false
+      });
+      
+      const playlistId = playlistData.body.id;
+      const playlistUrl = playlistData.body.external_urls.spotify;
+      
+      // Search for tracks and add them to the playlist
+      const trackUris: string[] = [];
+      
+      for (const song of songs) {
+        try {
+          await rateLimitSpotify();
+          const searchQuery = `${song.title} ${song.artist}`;
+          const searchResults = await userSpotifyApi.searchTracks(searchQuery, { limit: 1 });
+          
+          if (searchResults.body.tracks && searchResults.body.tracks.items.length > 0) {
+            const track = searchResults.body.tracks.items[0];
+            trackUris.push(track.uri);
+          }
+        } catch (searchError) {
+          console.error(`Error searching for track ${song.title}:`, searchError);
+        }
+      }
+      
+      // Add tracks to playlist
+      if (trackUris.length > 0) {
+        await userSpotifyApi.addTracksToPlaylist(playlistId, trackUris);
+      }
       
       res.json({
         success: true,
         playlist: {
           name,
           description,
-          spotifyUrl: spotifySearchUrl
+          spotifyUrl: playlistUrl,
+          playlistId: playlistId,
+          tracksAdded: trackUris.length,
+          totalSongs: songs.length
         }
       });
     } catch (error) {
-      console.error('Error creating playlist:', error);
-      res.status(500).json({ error: 'Failed to create playlist' });
+      console.error('Error creating Spotify playlist:', error);
+      if (error.statusCode === 401) {
+        // Token expired, remove session
+        if (req.body.sessionId) {
+          userSessions.delete(req.body.sessionId);
+        }
+        return res.status(401).json({ error: 'Spotify session expired. Please reconnect.' });
+      }
+      res.status(500).json({ error: 'Failed to create Spotify playlist' });
     }
   });
 
