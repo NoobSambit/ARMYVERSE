@@ -41,19 +41,8 @@ const AIPlaylist = () => {
           playlist: {
             name: `AI Generated: ${playlistResponse.data.theme}`,
             description: `AI curated playlist based on: ${playlistResponse.data.theme}`,
-            tracks: playlistResponse.data.songs.map((song: string, index: number) => ({
-              id: `ai-${index}`,
-              _id: `ai-${index}`,
-              title: song,
-              artist: 'BTS',
-              album: { title: 'Various', cover: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop' },
-              thumbnail: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop',
-              duration: 200,
-              releaseDate: '2023-01-01',
-              mood: 'ai-generated',
-              popularity: 85
-            })),
-            spotifyUrl: '#'
+            songs: playlistResponse.data.songs,
+            spotifyUrl: `https://open.spotify.com/search/${encodeURIComponent(playlistResponse.data.theme + ' BTS')}`
           },
           explanation: `This playlist was curated based on your request: "${prompt}". The AI selected these BTS songs to match your theme.`
         });
@@ -207,7 +196,7 @@ const AIPlaylist = () => {
             <div className="flex items-center space-x-6 text-white/70 text-sm mb-4">
               <div className="flex items-center space-x-1">
                 <Music className="w-4 h-4" />
-                <span>{result.playlist.tracks.length} songs</span>
+                <span>{result.playlist.songs.length} songs</span>
               </div>
               <div className="flex items-center space-x-1">
                 <span>✅ Exported to Spotify</span>
@@ -225,9 +214,9 @@ const AIPlaylist = () => {
 
           {/* Songs Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {result.playlist.tracks.map((song: any, index: number) => (
+            {result.playlist.songs.map((song: any, index: number) => (
               <motion.div
-                key={song.id}
+                key={song._id || index}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
