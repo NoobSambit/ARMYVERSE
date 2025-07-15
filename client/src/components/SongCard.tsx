@@ -76,7 +76,8 @@ const SongCard: React.FC<SongCardProps> = ({ song, onClick, showSpotifyLink = tr
           <motion.div
             initial={{ opacity: 0 }}
             whileHover={{ opacity: 1 }}
-            className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center"
+            onClick={handleSpotifyClick}
+            className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center cursor-pointer"
           >
             <Play className="w-4 h-4 text-white" />
           </motion.div>
