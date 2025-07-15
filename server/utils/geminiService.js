@@ -8,7 +8,8 @@ class GeminiService {
   }
 
   initialize() {
-    if (this.initialized) return;
+    // Always reinitialize to pick up latest config
+    this.initialized = false;
     
     if (!process.env.GEMINI_API_KEY) {
       console.warn('⚠️  GEMINI_API_KEY not found. AI playlist generation will be disabled.');
@@ -17,9 +18,12 @@ class GeminiService {
     }
     
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    this.model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Use the correct model name format
+    const modelName = "gemini-1.5-flash-latest";
+    console.log(`🔍 Attempting to use model: ${modelName}`);
+    this.model = this.genAI.getGenerativeModel({ model: modelName });
     this.initialized = true;
-    console.log('✅ Gemini service initialized successfully');
+    console.log('✅ Gemini service initialized with model: gemini-1.5-flash');
   }
 
   async generatePlaylist(theme) {
