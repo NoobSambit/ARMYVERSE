@@ -2,6 +2,14 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 class GeminiService {
   constructor() {
+    this.genAI = null;
+    this.model = null;
+    this.initialized = false;
+  }
+
+  initialize() {
+    if (this.initialized) return;
+    
     if (!process.env.GEMINI_API_KEY) {
       console.warn('⚠️  GEMINI_API_KEY not found. AI playlist generation will be disabled.');
       this.genAI = null;
@@ -9,10 +17,17 @@ class GeminiService {
     }
     
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    this.model = this.genAI.getGenerativeModel({ model: "gemini-pro" });
+    this.model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    this.initialized = true;
+    console.log('✅ Gemini service initialized successfully');
   }
 
   async generatePlaylist(theme) {
+    // Initialize on first use to ensure env vars are loaded
+    if (!this.initialized) {
+      this.initialize();
+    }
+    
     if (!this.genAI) {
       throw new Error('Gemini API not configured. Please set GEMINI_API_KEY environment variable.');
     }
