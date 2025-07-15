@@ -1,10 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { MongoClient } from "mongodb";
 import SpotifyWebApi from "spotify-web-api-node";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+const playlistRoutes = require('./routes/playlist');
 
-let mongoClient: MongoClient | null = null;
 
 // Initialize Spotify API
 const spotifyApi = new SpotifyWebApi({
@@ -126,64 +125,23 @@ const sampleBTSData = [
 ];
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Register playlist routes
+  app.use('/api', playlistRoutes);
+
   // Health check route
   app.get('/api/health', (req, res) => {
     res.json({ 
       status: 'ok', 
       timestamp: new Date().toISOString(),
-      mongodb: mongoClient ? 'connected' : 'disconnected',
       spotify: process.env.SPOTIFY_CLIENT_ID ? 'configured' : 'not configured'
     });
-  });
-
-  // Debug route
-  app.get('/api/debug/collections', async (req, res) => {
-    try {
-      const db = await getMongoDb();
-      const collections = await db.listCollections().toArray();
-      const collectionNames = collections.map(c => c.name);
-      
-      const result: any = { collections: collectionNames };
-      
-      for (const collName of collectionNames) {
-        const collection = db.collection(collName);
-        const count = await collection.countDocuments();
-        const sample = await collection.findOne();
-        result[collName] = { count, sample };
-      }
-      
-      res.json(result);
-    } catch (error) {
-      console.error('Error in debug route:', error);
-      res.status(500).json({ error: 'Failed to get debug info' });
-    }
   });
 
   // Stats routes with fallback data
   app.get('/api/stats/group', async (req, res) => {
     try {
-      const db = await getMongoDb();
-      const collection = db.collection('songs');
-      
-      const uniqueSongs = await collection.aggregate([
-        {
-          $match: {
-            spotifyId: { $exists: true, $ne: null, $ne: "" }
-          }
-        },
-        {
-          $group: {
-            _id: "$spotifyId",
-            song: { $first: "$$ROOT" }
-          }
-        },
-        {
-          $replaceRoot: { newRoot: "$song" }
-        }
-      ]).toArray();
-      
-      // If no data in database, use sample data
-      const songsToUse = uniqueSongs.length > 0 ? uniqueSongs : sampleBTSData;
+      // Use sample data for stats
+      const songsToUse = sampleBTSData;
       
       const totalSongs = songsToUse.length;
       let totalStreams = 0;
@@ -232,35 +190,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/stats/trending', async (req, res) => {
     try {
-      const db = await getMongoDb();
-      const collection = db.collection('songs');
-      
-      const trendingSongs = await collection.aggregate([
-        {
-          $match: {
-            spotifyId: { $exists: true, $ne: null, $ne: "" },
-            "stats.spotify.totalStreams": { $exists: true, $gt: 0 }
-          }
-        },
-        {
-          $group: {
-            _id: "$spotifyId",
-            song: { $first: "$$ROOT" }
-          }
-        },
-        {
-          $replaceRoot: { newRoot: "$song" }
-        },
-        {
-          $sort: { 'stats.spotify.totalStreams': -1 }
-        },
-        {
-          $limit: 20
-        }
-      ]).toArray();
-      
-      // Use sample data if no database data
-      const songsToReturn = trendingSongs.length > 0 ? trendingSongs : sampleBTSData;
+      // Use sample data for trending
+      const songsToReturn = sampleBTSData;
       
       res.json(songsToReturn);
     } catch (error) {
@@ -271,40 +202,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/stats/songs', async (req, res) => {
     try {
-      const db = await getMongoDb();
-      const collection = db.collection('songs');
-      
       const { sort = 'totalStreams', limit = 50 } = req.query;
       
-      let sortField = 'stats.spotify.totalStreams';
-      if (sort === 'title') sortField = 'title';
-      if (sort === 'artist') sortField = 'artist';
-      if (sort === 'popularity') sortField = 'stats.spotify.popularity';
+      // Use sample data and apply sorting
+      let songsToReturn = [...sampleBTSData];
       
-      const songs = await collection.aggregate([
-        {
-          $match: {
-            spotifyId: { $exists: true, $ne: null, $ne: "" }
-          }
-        },
-        {
-          $group: {
-            _id: "$spotifyId",
-            song: { $first: "$$ROOT" }
-          }
-        },
-        {
-          $replaceRoot: { newRoot: "$song" }
-        },
-        {
-          $sort: { [sortField]: -1 }
-        },
-        {
-          $limit: parseInt(limit as string)
-        }
-      ]).toArray();
+      if (sort === 'title') {
+        songsToReturn.sort((a, b) => a.title.localeCompare(b.title));
+      } else if (sort === 'artist') {
+        songsToReturn.sort((a, b) => a.artist.localeCompare(b.artist));
+      } else if (sort === 'popularity') {
+        songsToReturn.sort((a, b) => b.popularity - a.popularity);
+      } else {
+        songsToReturn.sort((a, b) => b.stats.spotify.totalStreams - a.stats.spotify.totalStreams);
+      }
       
-      const songsToReturn = songs.length > 0 ? songs : sampleBTSData;
+      songsToReturn = songsToReturn.slice(0, parseInt(limit as string));
       
       res.json({ songs: songsToReturn });
     } catch (error) {
@@ -315,81 +228,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/stats/albums', async (req, res) => {
     try {
-      const db = await getMongoDb();
-      const songsCollection = db.collection('songs');
-      
-      const albums = await songsCollection.aggregate([
+      // Return sample album data
+      const sampleAlbums = [
         {
-          $match: {
-            spotifyId: { $exists: true, $ne: null, $ne: "" },
-            "album.title": { $exists: true, $ne: null, $ne: "" }
-          }
+          _id: "BE",
+          title: "BE",
+          cover: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop",
+          releaseDate: "2020-11-20",
+          type: 'album',
+          calculatedStats: { songCount: 8, totalStreams: 2000000000 }
         },
         {
-          $group: {
-            _id: "$spotifyId",
-            song: { $first: "$$ROOT" }
-          }
-        },
-        {
-          $group: {
-            _id: "$song.album.title",
-            songCount: { $sum: 1 },
-            totalStreams: { 
-              $sum: { 
-                $ifNull: ["$song.stats.spotify.totalStreams", 0] 
-              } 
-            },
-            cover: { $first: "$song.album.cover" },
-            releaseDate: { $first: "$song.releaseDate" }
-          }
-        },
-        {
-          $match: {
-            _id: { $ne: null, $ne: "" }
-          }
-        },
-        {
-          $sort: { totalStreams: -1 }
+          _id: "Map of the Soul: 7",
+          title: "Map of the Soul: 7",
+          cover: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&h=300&fit=crop",
+          releaseDate: "2020-02-21",
+          type: 'album',
+          calculatedStats: { songCount: 20, totalStreams: 3500000000 }
         }
-      ]).toArray();
-      
-      if (albums.length === 0) {
-        // Return sample album data
-        const sampleAlbums = [
-          {
-            _id: "BE",
-            title: "BE",
-            cover: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop",
-            releaseDate: "2020-11-20",
-            type: 'album',
-            calculatedStats: { songCount: 8, totalStreams: 2000000000 }
-          },
-          {
-            _id: "Map of the Soul: 7",
-            title: "Map of the Soul: 7",
-            cover: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&h=300&fit=crop",
-            releaseDate: "2020-02-21",
-            type: 'album',
-            calculatedStats: { songCount: 20, totalStreams: 3500000000 }
-          }
-        ];
-        return res.json(sampleAlbums);
-      }
-      
-      const formattedAlbums = albums.map(album => ({
-        _id: album._id,
-        title: album._id,
-        cover: album.cover || '',
-        releaseDate: album.releaseDate || '',
-        type: 'album',
-        calculatedStats: {
-          songCount: album.songCount,
-          totalStreams: album.totalStreams || 0
-        }
-      }));
-      
-      res.json(formattedAlbums);
+      ];
+      res.json(sampleAlbums);
     } catch (error) {
       console.error('Error fetching albums:', error);
       res.json([]);
@@ -582,210 +440,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Sync route - comprehensive BTS data sync
-  app.post('/api/sync', async (req, res) => {
-    try {
-      console.log('🔄 Starting comprehensive BTS data sync...');
-      
-      const tokenSuccess = await getSpotifyToken();
-      if (!tokenSuccess) {
-        return res.status(500).json({ error: 'Failed to authenticate with Spotify. Cannot sync data.' });
-      }
-      
-      const db = await getMongoDb();
-      const collection = db.collection('songs');
-      const albumCollection = db.collection('albums');
-      
-      // Search for BTS artist
-      await rateLimitSpotify();
-      const artistSearch = await spotifyApi.searchArtists('BTS', { limit: 1 });
-      const btsArtist = artistSearch.body.artists?.items?.[0];
-      
-      if (!btsArtist) {
-        return res.status(404).json({ error: 'BTS artist not found' });
-      }
-      
-      console.log('✅ Found BTS artist:', btsArtist.name);
-      
-      // Get BTS albums
-      let allAlbums: any[] = [];
-      let albumOffset = 0;
-      let hasMoreAlbums = true;
-      
-      while (hasMoreAlbums && albumOffset < 200) { // Limit to prevent infinite loops
-        await rateLimitSpotify();
-        const albumResults = await spotifyApi.getArtistAlbums(btsArtist.id, {
-          limit: 50,
-          offset: albumOffset,
-          include_groups: 'album,single'
-        });
-        
-        const albums = albumResults.body.items || [];
-        allAlbums.push(...albums);
-        
-        console.log(`📀 Fetched ${albums.length} albums (offset: ${albumOffset})`);
-        
-        hasMoreAlbums = albums.length === 50;
-        albumOffset += 50;
-      }
-      
-      console.log(`📀 Total albums found: ${allAlbums.length}`);
-      
-      let allTracks: any[] = [];
-      const processedTracks = new Set<string>();
-      
-      // Process albums and tracks
-      for (const album of allAlbums.slice(0, 20)) { // Limit albums to prevent timeout
-        try {
-          await rateLimitSpotify();
-          const albumTracks = await spotifyApi.getAlbumTracks(album.id, { limit: 50 });
-          const tracks = albumTracks.body.items || [];
-          
-          // Save album data
-          const albumDoc = {
-            _id: album.id,
-            title: album.name,
-            cover: album.images?.[0]?.url || '',
-            releaseDate: album.release_date,
-            type: album.album_type,
-            totalTracks: album.total_tracks,
-            spotifyUrl: album.external_urls?.spotify || ''
-          };
-          
-          await albumCollection.updateOne(
-            { _id: album.id },
-            { $set: albumDoc },
-            { upsert: true }
-          );
-          
-          // Process tracks
-          for (const track of tracks) {
-            if (processedTracks.has(track.id)) {
-              continue;
-            }
-            
-            try {
-              await rateLimitSpotify();
-              const fullTrack = await spotifyApi.getTrack(track.id);
-              const trackData = fullTrack.body;
-              
-              // Estimate streaming data based on popularity
-              const popularity = trackData.popularity || 0;
-              const estimatedStreams = Math.floor(popularity * 10000000); // Rough estimate
-              
-              const trackDoc = {
-                _id: track.id,
-                title: trackData.name,
-                artist: trackData.artists.map((a: any) => a.name).join(', '),
-                spotifyId: track.id,
-                album: {
-                  id: album.id,
-                  title: album.name,
-                  cover: album.images?.[0]?.url || ''
-                },
-                albumTitle: album.name,
-                stats: {
-                  spotify: {
-                    totalStreams: estimatedStreams,
-                    monthlyStreams: Math.floor(estimatedStreams * 0.1),
-                    dailyStreams: Math.floor(estimatedStreams * 0.003),
-                    popularity: popularity
-                  },
-                  lastUpdated: new Date()
-                },
-                thumbnail: album.images?.[0]?.url || '',
-                duration: Math.floor(trackData.duration_ms / 1000),
-                releaseDate: album.release_date,
-                mood: popularity > 70 ? 'energetic' : popularity > 50 ? 'upbeat' : 'calm',
-                spotifyUrl: trackData.external_urls?.spotify || '',
-                uri: trackData.uri,
-                popularity: popularity
-              };
-              
-              await collection.updateOne(
-                { spotifyId: track.id },
-                { $set: trackDoc },
-                { upsert: true }
-              );
-              
-              allTracks.push(trackDoc);
-              processedTracks.add(track.id);
-              
-            } catch (trackError) {
-              console.error('Error processing track:', track.name, trackError);
-            }
-          }
-          
-          console.log(`✅ Completed album: ${album.name} (${tracks.length} tracks)`);
-          
-        } catch (albumError) {
-          console.error('Error processing album:', album.name, albumError);
-        }
-      }
-      
-      const totalStreams = allTracks.reduce((sum, track) => sum + (track.stats.spotify.totalStreams || 0), 0);
-      
-      console.log(`🎉 Sync completed: ${allTracks.length} tracks from ${allAlbums.length} albums`);
-      
-      res.json({
-        success: true,
-        syncedTracks: allTracks.length,
-        syncedAlbums: allAlbums.length,
-        totalEstimatedStreams: totalStreams,
-        message: `Successfully synced ${allTracks.length} BTS tracks from ${allAlbums.length} albums`
-      });
-      
-    } catch (error) {
-      console.error('❌ Error syncing data:', error);
-      res.status(500).json({ error: 'Failed to sync data: ' + (error as Error).message });
-    }
-  });
-
-  // Cleanup route
-  app.post('/api/cleanup/duplicates', async (req, res) => {
-    try {
-      const db = await getMongoDb();
-      const collection = db.collection('songs');
-      
-      const duplicates = await collection.aggregate([
-        {
-          $match: {
-            spotifyId: { $exists: true, $ne: null, $ne: "" }
-          }
-        },
-        {
-          $group: {
-            _id: "$spotifyId",
-            count: { $sum: 1 },
-            docs: { $push: { _id: "$_id", title: "$title" } }
-          }
-        },
-        {
-          $match: {
-            count: { $gt: 1 }
-          }
-        }
-      ]).toArray();
-      
-      let removedCount = 0;
-      for (const duplicate of duplicates) {
-        const toRemove = duplicate.docs.slice(1);
-        for (const doc of toRemove) {
-          await collection.deleteOne({ _id: doc._id });
-          removedCount++;
-        }
-      }
-      
-      res.json({ 
-        message: `Removed ${removedCount} duplicate songs`,
-        duplicatesFound: duplicates.length,
-        totalRemoved: removedCount
-      });
-    } catch (error) {
-      console.error('Error cleaning up duplicates:', error);
-      res.status(500).json({ error: 'Failed to clean up duplicates' });
-    }
-  });
 
   const httpServer = createServer(app);
   return httpServer;

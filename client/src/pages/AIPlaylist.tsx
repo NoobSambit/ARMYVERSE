@@ -29,28 +29,44 @@ const AIPlaylist = () => {
 
     setLoading(true);
     try {
-      const response = await api.post('/ai/generate', {
-        prompt: prompt.trim(),
-        count: 12,
-        mood: null,
-        genres: []
+      const response = await api.post('/generatePlaylist', {
+        theme: prompt.trim()
       });
 
-      if (response.data.success) {
-        setResult(response.data);
+      if (response.data.message === 'Playlist created') {
+        // Fetch the created playlist
+        const playlistResponse = await api.get(`/playlists/${response.data.playlistId}`);
         
-        // Show success message and option to open in Spotify
-        const openSpotify = window.confirm(
-          `✅ AI Playlist "${response.data.playlist.name}" created successfully!\n\nWould you like to open it in Spotify now?`
-        );
+        setResult({
+          playlist: {
+            name: `AI Generated: ${playlistResponse.data.theme}`,
+            description: `AI curated playlist based on: ${playlistResponse.data.theme}`,
+            tracks: playlistResponse.data.songs.map((song: string, index: number) => ({
+              id: `ai-${index}`,
+              _id: `ai-${index}`,
+              title: song,
+              artist: 'BTS',
+              album: { title: 'Various', cover: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop' },
+              thumbnail: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop',
+              duration: 200,
+              releaseDate: '2023-01-01',
+              mood: 'ai-generated',
+              popularity: 85
+            })),
+            spotifyUrl: '#'
+          },
+          explanation: `This playlist was curated based on your request: "${prompt}". The AI selected these BTS songs to match your theme.`
+        });
         
-        if (openSpotify && response.data.playlist.spotifyUrl) {
-          window.open(response.data.playlist.spotifyUrl, '_blank');
-        }
+        alert(`✅ AI Playlist created successfully with ${playlistResponse.data.songs.length} songs!`);
       }
     } catch (error) {
       console.error('Error generating playlist:', error);
-      alert('❌ Error generating playlist. Please try again.');
+      if (error.response?.status === 503) {
+        alert('❌ AI service unavailable. Please configure Gemini API key.');
+      } else {
+        alert('❌ Error generating playlist. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
