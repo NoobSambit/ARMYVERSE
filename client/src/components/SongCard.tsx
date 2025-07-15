@@ -69,7 +69,7 @@ const SongCard: React.FC<SongCardProps> = ({ song, onClick, showSpotifyLink = tr
         {/* Thumbnail */}
         <div className="relative">
           <img
-            src={song.thumbnail || song.album.cover}
+            src={song.thumbnail || song.album?.cover || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop'}
             alt={song.title}
             className="w-12 h-12 rounded-lg object-cover"
           />
@@ -94,7 +94,7 @@ const SongCard: React.FC<SongCardProps> = ({ song, onClick, showSpotifyLink = tr
             )}
           </div>
           <p className="text-white/70 text-xs">{song.artist}</p>
-          <p className="text-white/60 text-xs">{song.album.title}</p>
+          <p className="text-white/60 text-xs">{song.album?.title || song.album}</p>
           
           {/* Duration */}
           <div className="flex items-center space-x-1 mt-1">
