@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import SpotifyWebApi from "spotify-web-api-node";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-const playlistRoutes = require('./routes/playlist');
+import playlistRoutes from './routes/playlist.js';
 
 
 // Initialize Spotify API
