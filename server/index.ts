@@ -46,23 +46,22 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Validate required environment variables
-  const requiredEnvVars = ['MONGODB_URI', 'SPOTIFY_CLIENT_ID', 'SPOTIFY_CLIENT_SECRET'];
-  const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
-  
-  if (missingEnvVars.length > 0) {
-    console.error('Missing required environment variables:', missingEnvVars.join(', '));
-    process.exit(1);
+  // Check for optional API keys and warn if missing
+  if (!process.env.GEMINI_API_KEY) {
+    console.warn('⚠️  GEMINI_API_KEY not found. AI playlist generation will be disabled.');
   }
 
   console.log('🔧 Environment variables loaded successfully');
   console.log('🗄️  MongoDB URI:', process.env.MONGODB_URI ? 'Configured' : 'Missing');
   console.log('🎵 Spotify Client ID:', process.env.SPOTIFY_CLIENT_ID ? 'Configured' : 'Missing');
-  console.log('📺 YouTube API Key:', process.env.YOUTUBE_API_KEY ? 'Configured' : 'Missing');
   console.log('🤖 Gemini API Key:', process.env.GEMINI_API_KEY ? 'Configured' : 'Missing');
 
   // Connect to MongoDB
-  await connectDB();
+  try {
+    await connectDB();
+  } catch (error) {
+    console.error('Failed to connect to MongoDB, falling back to in-memory storage');
+  }
 
   const server = await registerRoutes(app);
 
