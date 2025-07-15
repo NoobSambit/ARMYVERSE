@@ -354,12 +354,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ error: 'Failed to authenticate with Spotify. Cannot create playlist.' });
       }
       
+      // Note: Creating actual Spotify playlists requires user authentication (OAuth)
+      // For now, return a search URL that opens Spotify with the playlist name
+      const searchQuery = encodeURIComponent(`${name} BTS`);
+      const spotifySearchUrl = `https://open.spotify.com/search/${searchQuery}`;
+      
       res.json({
         success: true,
         playlist: {
           name,
           description,
-          spotifyUrl: `https://open.spotify.com/playlist/dummy-playlist-id`
+          spotifyUrl: spotifySearchUrl
         }
       });
     } catch (error) {

@@ -7,10 +7,19 @@ const playlistSchema = new mongoose.Schema({
     trim: true
   },
   songs: [{
-    type: String,
-    required: true,
-    trim: true
+    title: { type: String, required: true },
+    artist: { type: String, required: true },
+    album: { type: String, required: true },
+    thumbnail: { type: String, required: true },
+    duration: { type: Number, required: true },
+    spotifyUrl: { type: String, required: true },
+    spotifyId: { type: String },
+    uri: { type: String }
   }],
+  spotifyUrl: {
+    type: String,
+    required: false
+  },
   createdAt: {
     type: Date,
     default: Date.now

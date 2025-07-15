@@ -1,4 +1,5 @@
 import express from 'express';
+import SpotifyWebApi from 'spotify-web-api-node';
 const router = express.Router();
 import Playlist from '../models/Playlist.js';
 import geminiService from '../utils/geminiService.js';
@@ -19,12 +20,26 @@ router.post('/generatePlaylist', async (req, res) => {
 
     // Generate playlist using Gemini
     console.log(`🤖 Generating playlist for theme: "${trimmedTheme}"`);
-    const songs = await geminiService.generatePlaylist(trimmedTheme);
+    const songTitles = await geminiService.generatePlaylist(trimmedTheme);
+
+    // For now, create songs with search links to Spotify
+    // TODO: Implement full Spotify API integration with real song data
+    const enrichedSongs = songTitles.map(title => ({
+      title,
+      artist: 'BTS',
+      album: 'Unknown',
+      thumbnail: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop',
+      duration: 180,
+      spotifyUrl: `https://open.spotify.com/search/${encodeURIComponent(title + ' BTS')}`,
+      spotifyId: null,
+      uri: null
+    }));
 
     // Create playlist object
     const playlist = new Playlist({
       theme: trimmedTheme,
-      songs: songs,
+      songs: enrichedSongs,
+      spotifyUrl: `https://open.spotify.com/search/${encodeURIComponent(trimmedTheme + ' BTS')}`,
       createdAt: new Date()
     });
 
@@ -32,7 +47,7 @@ router.post('/generatePlaylist', async (req, res) => {
     const savedPlaylist = await playlist.save();
     
     console.log(`✅ Playlist created with ID: ${savedPlaylist._id}`);
-    console.log(`🎵 Songs: ${songs.join(', ')}`);
+    console.log(`🎵 Songs: ${enrichedSongs.map(s => s.title).join(', ')}`);
 
     res.status(201).json({
       message: 'Playlist created',
