@@ -1,7 +1,7 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const Playlist = require('../models/Playlist');
-const geminiService = require('../utils/geminiService');
+import Playlist from '../models/Playlist.js';
+import geminiService from '../utils/geminiService.js';
 
 // POST /generatePlaylist - Generate AI playlist
 router.post('/generatePlaylist', async (req, res) => {
@@ -123,4 +123,4 @@ router.get('/playlists', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

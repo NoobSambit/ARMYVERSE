@@ -1,7 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-const connectDB = require('./config/database');
+import connectDB from './config/database.js';
 
 // Load environment variables FIRST
 dotenv.config();
