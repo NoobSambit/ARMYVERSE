@@ -1,9 +1,23 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+// Debug: Log environment variables (without exposing sensitive data)
+console.log('🔧 Environment check:');
+console.log('- NODE_ENV:', process.env.NODE_ENV);
+console.log('- GEMINI_API_KEY exists:', !!process.env.GEMINI_API_KEY);
+console.log('- GEMINI_API_KEY length:', process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.length : 0);
+
 // Initialize Gemini AI
 const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
 
+console.log('🤖 Gemini AI initialized:', !!genAI);
+
 export default async function handler(req, res) {
+  console.log('🚀 API handler called at:', new Date().toISOString());
+  console.log('📝 Request method:', req.method);
+  console.log('📝 Request URL:', req.url);
+  console.log('📝 Request headers:', Object.keys(req.headers));
+  console.log('📝 User agent:', req.headers['user-agent']);
+  
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -11,18 +25,21 @@ export default async function handler(req, res) {
 
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('✅ Handling OPTIONS preflight request');
     res.status(200).end();
     return;
   }
 
   // Only allow POST requests
   if (req.method !== 'POST') {
+    console.log('❌ Method not allowed:', req.method);
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
     console.log('🤖 AI playlist route hit!');
-    console.log('Request body:', req.body);
+    console.log('📦 Request body type:', typeof req.body);
+    console.log('📦 Request body:', JSON.stringify(req.body, null, 2));
     
     const { 
       prompt, 
@@ -33,12 +50,22 @@ export default async function handler(req, res) {
       playlistType 
     } = req.body;
     
+    console.log('🔍 Extracted parameters:');
+    console.log('- prompt:', prompt);
+    console.log('- mood:', mood);
+    console.log('- artistBias:', artistBias);
+    console.log('- playlistLength:', playlistLength);
+    console.log('- yearEra:', yearEra);
+    console.log('- playlistType:', playlistType);
+    
     if (!prompt?.trim()) {
+      console.log('❌ Prompt validation failed - prompt is empty or missing');
       return res.status(400).json({ error: 'Prompt is required' });
     }
     
     if (!genAI) {
       console.error('❌ Gemini API key not configured');
+      console.error('❌ Environment variables available:', Object.keys(process.env).filter(key => key.includes('GEMINI')));
       return res.status(500).json({ error: 'AI service not configured' });
     }
     
@@ -97,35 +124,46 @@ REQUIRED FORMAT - Return ONLY this JSON array:
 
 IMPORTANT: Only return the JSON array, no explanations or other text.`;
 
+    console.log('🤖 Enhanced prompt created, length:', enhancedPrompt.length);
     console.log('🤖 Using Gemini 2.0 Flash with enhanced prompt');
     
     // Use Gemini 2.0 Flash model
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    console.log('🤖 Model initialized, calling generateContent...');
+    
     const result = await model.generateContent(enhancedPrompt);
+    console.log('🤖 Gemini response received');
+    
     const response = result.response;
     const text = response.text();
     
     console.log('🤖 Raw Gemini response length:', text.length);
+    console.log('🤖 Raw Gemini response preview:', text.substring(0, 200) + '...');
     
     // Parse JSON from response
     let aiPlaylist;
     try {
+      console.log('🔍 Attempting to parse JSON from response...');
       const jsonMatch = text.match(/\[\s*{[\s\S]*}\s*\]/);
       if (jsonMatch) {
+        console.log('✅ Found JSON array with regex match');
         aiPlaylist = JSON.parse(jsonMatch[0]);
       } else {
+        console.log('✅ Parsing entire response as JSON');
         aiPlaylist = JSON.parse(text.trim());
       }
       
       if (!Array.isArray(aiPlaylist) || aiPlaylist.length === 0) {
-        throw new Error('Invalid playlist format');
+        throw new Error('Invalid playlist format - not an array or empty array');
       }
       
       console.log(`✅ Parsed ${aiPlaylist.length} songs from AI`);
+      console.log('✅ First few songs:', aiPlaylist.slice(0, 3));
       
     } catch (parseError) {
       console.error('❌ Failed to parse AI response:', parseError);
-      console.error('Raw response was:', text);
+      console.error('❌ Parse error details:', parseError.message);
+      console.error('❌ Raw response was:', text);
       
       // Return fallback playlist
       aiPlaylist = [
@@ -162,13 +200,19 @@ IMPORTANT: Only return the JSON array, no explanations or other text.`;
     }
 
     console.log(`✅ Returning enhanced playlist with ${enhancedPlaylist.length} tracks`);
+    console.log('✅ Response status: 200');
     res.json(enhancedPlaylist);
     
   } catch (error) {
     console.error('❌ AI playlist generation error:', error);
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error name:', error.name);
+    console.error('❌ Error message:', error.message);
+    
     res.status(500).json({ 
       error: 'Failed to generate AI playlist', 
-      details: error.message 
+      details: error.message,
+      timestamp: new Date().toISOString()
     });
   }
 } 
