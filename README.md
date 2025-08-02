@@ -250,25 +250,37 @@ The project uses Tailwind CSS with custom configurations. You can modify:
 
 ## 🚀 Deployment
 
-### Frontend Deployment
-```bash
-npm run build
-# Deploy the dist/ folder to your hosting service
-```
+### Quick Deploy Options
 
-### Backend Deployment
-```bash
-cd backend
-npm run start
-# Deploy to your preferred hosting service (Heroku, Vercel, etc.)
-```
+#### Option 1: Netlify + Railway (Recommended)
+- **Frontend**: Deploy to [Netlify](https://netlify.com) (Free)
+- **Backend**: Deploy to [Railway](https://railway.app) (Free tier)
+- **Database**: [MongoDB Atlas](https://cloud.mongodb.com) (Free tier)
+
+#### Option 2: Netlify + Render
+- **Frontend**: Deploy to [Netlify](https://netlify.com) (Free)
+- **Backend**: Deploy to [Render](https://render.com) (Free tier)
+
+#### Option 3: Netlify + Heroku
+- **Frontend**: Deploy to [Netlify](https://netlify.com) (Free)
+- **Backend**: Deploy to [Heroku](https://heroku.com) (Free tier)
+
+### Detailed Deployment Guide
+For step-by-step deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md)
 
 ### Environment Variables
 Make sure to set all required environment variables in your production environment:
-- `MONGODB_URI`
-- `SPOTIFY_CLIENT_ID`
-- `SPOTIFY_CLIENT_SECRET`
-- `GOOGLE_AI_API_KEY`
+
+**Frontend (Netlify):**
+- `VITE_API_URL` - Your backend URL
+- `VITE_SPOTIFY_CLIENT_ID` - Spotify Client ID
+
+**Backend (Railway/Render/Heroku):**
+- `MONGODB_URI` - MongoDB connection string
+- `SPOTIFY_CLIENT_ID` - Spotify Client ID
+- `SPOTIFY_CLIENT_SECRET` - Spotify Client Secret
+- `GOOGLE_AI_API_KEY` - Google AI API key
+- `NODE_ENV` - Set to "production"
 
 ## 🤝 Contributing
 
