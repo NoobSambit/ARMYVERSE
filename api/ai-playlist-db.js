@@ -6,8 +6,6 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 dotenv.config();
 
-const app = express();
-
 // MongoDB Connection
 const connectDB = async () => {
   try {
@@ -197,19 +195,24 @@ const searchSpotifyTrack = async (title, artist) => {
   };
 };
 
-// CORS Configuration
-app.use(cors({
-  origin: true,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-}));
+// Vercel API handler
+module.exports = async (req, res) => {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
 
-// AI Playlist Generation Endpoint (Real AI)
-app.post('/api/ai-playlist-db', async (req, res) => {
+  // Only allow POST requests
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   try {
     console.log('🤖 AI playlist with database lookup route hit!');
     console.log('Request body:', req.body);
@@ -378,63 +381,4 @@ IMPORTANT: Only return the JSON array, no explanations or other text.`;
       details: error.message 
     });
   }
-});
-
-// Test Playlist Endpoint (Real test data)
-app.post('/api/test-playlist', async (req, res) => {
-  try {
-    console.log('🎵 Test Playlist request received:', req.body);
-    
-    const testPlaylist = [
-      { title: "Dynamite", artist: "BTS" },
-      { title: "Butter", artist: "BTS" },
-      { title: "Permission to Dance", artist: "BTS" },
-      { title: "Life Goes On", artist: "BTS" },
-      { title: "Spring Day", artist: "BTS" }
-    ];
-    
-    // Enhance with Spotify data
-    const enhancedPlaylist = [];
-    for (const track of testPlaylist) {
-      const enhancedTrack = { ...track };
-      const spotifyData = await searchSpotifyTrack(track.title, track.artist);
-      if (spotifyData) {
-        Object.assign(enhancedTrack, spotifyData);
-      }
-      enhancedPlaylist.push(enhancedTrack);
-    }
-    
-    console.log('✅ Test Playlist generated successfully');
-    res.json(enhancedPlaylist);
-    
-  } catch (error) {
-    console.error('❌ Test Playlist generation error:', error);
-    res.status(500).json({ error: 'Failed to generate test playlist' });
-  }
-});
-
-// Simple test route
-app.get('/api/test', (req, res) => {
-  res.json({
-    message: 'ArmyVerse API is working! 💜',
-    status: 'success',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Health check
-app.get('/', (req, res) => {
-  res.json({
-    message: 'Welcome to ArmyVerse API! 💜',
-    version: '1.0.0',
-    status: 'running',
-    endpoints: {
-      test: '/api/test',
-      aiPlaylist: '/api/ai-playlist-db',
-      testPlaylist: '/api/test-playlist'
-    }
-  });
-});
-
-// Export for Vercel
-module.exports = app; 
+}; 
