@@ -1,4 +1,5 @@
 # 🎵 ArmyVerse - BTS Fan Dashboard
+## first repo of armyverse, later migrated to nextjs, made the main repo private for some personal reasons, live website : armyverse.vercel.app
 
 A comprehensive web application built for BTS fans (ARMY) to discover trending content, create AI-powered playlists, and dive deep into analytics. ArmyVerse combines streaming data, AI integration, and social features to create the ultimate BTS fan experience.
 
